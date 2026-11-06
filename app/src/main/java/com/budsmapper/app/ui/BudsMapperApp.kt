@@ -11,3 +11,4 @@ fun BudsMapperApp(eventStore: LastEventStore) {
         HomeScreen(eventStore = eventStore)
     }
 }
+

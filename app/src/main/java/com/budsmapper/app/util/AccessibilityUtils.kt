@@ -46,3 +46,4 @@ object AccessibilityUtils {
         context.startActivity(intent)
     }
 }
+

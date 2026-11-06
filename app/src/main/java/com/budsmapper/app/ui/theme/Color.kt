@@ -18,3 +18,4 @@ val StatusInactiveContainer = Color(0xFF222226)
 val TextPrimary = Color(0xFFF2F2F7)
 val TextSecondary = Color(0xFF9898A0)
 val TextTertiary = Color(0xFF636366)
+
