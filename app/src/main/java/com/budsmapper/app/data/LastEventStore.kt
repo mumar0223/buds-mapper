@@ -44,16 +44,25 @@ class LastEventStore(context: Context) {
     )
     val mediaSessionCaptureEnabled: StateFlow<Boolean> = _mediaSessionCaptureEnabled.asStateFlow()
 
+    private val _currentForegroundPackage = MutableStateFlow(
+        prefs.getString(KEY_FOREGROUND_PACKAGE, "com.budsmapper.app") ?: "com.budsmapper.app"
+    )
+    val currentForegroundPackage: StateFlow<String> = _currentForegroundPackage.asStateFlow()
+
     private val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         when (key) {
             KEY_MEDIA_SESSION_CAPTURE_ENABLED -> {
                 _mediaSessionCaptureEnabled.value = prefs.getBoolean(KEY_MEDIA_SESSION_CAPTURE_ENABLED, false)
             }
-            KEY_CODE, KEY_SOURCE -> {
+            KEY_CODE, KEY_SOURCE, KEY_TIMESTAMP -> {
                 _lastEventFlow.value = loadLastEvent()
+                _detectionStateFlow.value = loadDetectionState()
             }
             KEY_CMD_PLAY_DETECTED, KEY_CMD_PAUSE_DETECTED, KEY_CMD_NEXT_DETECTED, KEY_CMD_PREV_DETECTED -> {
                 _detectionStateFlow.value = loadDetectionState()
+            }
+            KEY_FOREGROUND_PACKAGE -> {
+                _currentForegroundPackage.value = prefs.getString(KEY_FOREGROUND_PACKAGE, "com.budsmapper.app") ?: "com.budsmapper.app"
             }
         }
     }
@@ -69,6 +78,11 @@ class LastEventStore(context: Context) {
 
     fun isMediaSessionCaptureEnabled(): Boolean {
         return prefs.getBoolean(KEY_MEDIA_SESSION_CAPTURE_ENABLED, false)
+    }
+
+    fun setCurrentForegroundPackage(pkg: String) {
+        prefs.edit().putString(KEY_FOREGROUND_PACKAGE, pkg).apply()
+        _currentForegroundPackage.value = pkg
     }
 
     fun saveEvent(event: KeyEvent, source: String = "AccessibilityService") {
@@ -121,6 +135,7 @@ class LastEventStore(context: Context) {
         _lastEventFlow.value = loadLastEvent()
         _detectionStateFlow.value = loadDetectionState()
         _mediaSessionCaptureEnabled.value = prefs.getBoolean(KEY_MEDIA_SESSION_CAPTURE_ENABLED, false)
+        _currentForegroundPackage.value = prefs.getString(KEY_FOREGROUND_PACKAGE, "com.budsmapper.app") ?: "com.budsmapper.app"
     }
 
     private fun loadLastEvent(): RecordedKeyEvent? {
@@ -157,6 +172,7 @@ class LastEventStore(context: Context) {
         private const val KEY_DEVICE_ID = "last_device_id"
         private const val KEY_SOURCE = "last_source"
         private const val KEY_MEDIA_SESSION_CAPTURE_ENABLED = "media_session_capture_enabled"
+        private const val KEY_FOREGROUND_PACKAGE = "foreground_package"
 
         private const val KEY_CMD_PLAY_DETECTED = "cmd_play_detected"
         private const val KEY_CMD_PLAY_TIME = "cmd_play_time"

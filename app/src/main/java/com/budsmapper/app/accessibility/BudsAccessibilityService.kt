@@ -17,10 +17,10 @@ import kotlinx.coroutines.launch
  * BudsAccessibilityService
  *
  * Responsibilities:
- * - Diagnostic interception of global Android KeyEvents via onKeyEvent()
- * - Hosts the native MediaSession diagnostic receiver to ensure background longevity
- * - Records events to LastEventStore without blocking the main thread
- * - CRITICAL: Returns false from onKeyEvent() so normal system key events are not blocked
+ * - Intercepts physical system hardware buttons (Volume Up/Down) via onKeyEvent()
+ * - Hosts BudsMediaSessionManager to keep MediaSession & Silent AudioTrack alive in background
+ * - Observes foreground app package changes via TYPE_WINDOW_STATE_CHANGED
+ * - CRITICAL: Returns false from onKeyEvent() so normal volume routing is not blocked
  */
 class BudsAccessibilityService : AccessibilityService() {
 
@@ -49,9 +49,9 @@ class BudsAccessibilityService : AccessibilityService() {
         Log.i(TAG, "BudsAccessibilityService connected to accessibility subsystem")
         val info = serviceInfo ?: AccessibilityServiceInfo()
         info.flags = info.flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
+        info.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
         serviceInfo = info
 
-        // Check if capture mode was already enabled
         if (eventStore.isMediaSessionCaptureEnabled()) {
             mediaSessionManager.setCaptureEnabled(true)
         }
@@ -76,12 +76,19 @@ class BudsAccessibilityService : AccessibilityService() {
         // Record the event with source tag "AccessibilityService"
         eventStore.saveEvent(event, source = "AccessibilityService")
 
-        // CRITICAL: Return false so normal event routing continues unobstructed
+        // Return false so normal volume routing continues unobstructed
         return false
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // No-op for diagnostic phase
+        if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            val pkg = event.packageName?.toString() ?: return
+            // Ignore system UI overlays like volume sliders, status bar or keyboards
+            if (pkg != "com.android.systemui" && !pkg.contains("inputmethod")) {
+                Log.d(TAG, "Foreground app changed: $pkg")
+                eventStore.setCurrentForegroundPackage(pkg)
+            }
+        }
     }
 
     override fun onInterrupt() {

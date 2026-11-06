@@ -2,9 +2,16 @@ package com.budsmapper.app.media
 
 import android.content.Context
 import android.content.Intent
+import android.media.AudioAttributes
+import android.media.AudioFormat
+import android.media.AudioManager
+import android.media.AudioPlaybackConfiguration
+import android.media.AudioTrack
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.KeyEvent
 import com.budsmapper.app.data.LastEventStore
@@ -12,7 +19,28 @@ import com.budsmapper.app.data.LastEventStore
 class BudsMediaSessionManager(private val context: Context) {
 
     private val eventStore = LastEventStore.getInstance(context)
+    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+    private val mainHandler = Handler(Looper.getMainLooper())
+
     private var mediaSession: MediaSession? = null
+    private var silentAudioTrack: AudioTrack? = null
+
+    // Callback to detect when YouTube/Spotify starts audio so we can reclaim mediaButtonSession priority
+    private val audioPlaybackCallback = object : AudioManager.AudioPlaybackCallback() {
+        override fun onPlaybackConfigChanged(configs: List<AudioPlaybackConfiguration>) {
+            super.onPlaybackConfigChanged(configs)
+            if (!isSessionActive()) return
+
+            val hasExternalMedia = configs.any { config ->
+                config.audioAttributes.usage == AudioAttributes.USAGE_MEDIA
+            }
+
+            if (hasExternalMedia) {
+                Log.d(TAG, "Media audio playback configuration detected. Pulsing silent AudioTrack to retain priority.")
+                pulseSilentAudio()
+            }
+        }
+    }
 
     @Synchronized
     fun setCaptureEnabled(enabled: Boolean) {
@@ -20,13 +48,17 @@ class BudsMediaSessionManager(private val context: Context) {
             if (mediaSession == null) {
                 initializeSession()
             }
+            startSilentAudio()
             mediaSession?.isActive = true
-            Log.i(TAG, "MediaSession activated for diagnostic capture")
+            registerPlaybackCallback()
+            Log.i(TAG, "MediaSession & Silent AudioTrack activated for priority capture")
         } else {
+            unregisterPlaybackCallback()
+            stopSilentAudio()
             mediaSession?.isActive = false
             mediaSession?.release()
             mediaSession = null
-            Log.i(TAG, "MediaSession deactivated and released")
+            Log.i(TAG, "MediaSession & Silent AudioTrack deactivated and released")
         }
     }
 
@@ -35,15 +67,89 @@ class BudsMediaSessionManager(private val context: Context) {
         return mediaSession?.isActive == true
     }
 
-    private fun initializeSession() {
-        val session = MediaSession(context, SESSION_TAG)
-        
-        session.setFlags(
-            MediaSession.FLAG_HANDLES_MEDIA_BUTTONS or
-            MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS
-        )
+    private fun startSilentAudio() {
+        if (silentAudioTrack != null) return
 
-        val state = PlaybackState.Builder()
+        try {
+            val sampleRate = 8000
+            val bufferSize = AudioTrack.getMinBufferSize(
+                sampleRate,
+                AudioFormat.CHANNEL_OUT_MONO,
+                AudioFormat.ENCODING_PCM_16BIT
+            )
+
+            val track = AudioTrack.Builder()
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build()
+                )
+                .setAudioFormat(
+                    AudioFormat.Builder()
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setSampleRate(sampleRate)
+                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                        .build()
+                )
+                .setBufferSizeInBytes(bufferSize)
+                .setTransferMode(AudioTrack.MODE_STATIC)
+                .build()
+
+            val silence = ByteArray(bufferSize) // Zero-filled PCM = complete silence
+            track.write(silence, 0, silence.size)
+            track.setLoopPoints(0, bufferSize / 2, -1) // Loop infinitely
+            track.play()
+            silentAudioTrack = track
+            Log.i(TAG, "Silent AudioTrack started on USAGE_MEDIA to satisfy AudioPlayerStateMonitor")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start silent AudioTrack", e)
+        }
+    }
+
+    private fun stopSilentAudio() {
+        try {
+            silentAudioTrack?.stop()
+            silentAudioTrack?.release()
+            silentAudioTrack = null
+            Log.i(TAG, "Silent AudioTrack stopped")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error stopping silent AudioTrack", e)
+        }
+    }
+
+    private fun pulseSilentAudio() {
+        // Briefly restart our AudioTrack to become the most recently started USAGE_MEDIA stream
+        mainHandler.post {
+            try {
+                silentAudioTrack?.pause()
+                silentAudioTrack?.play()
+                mediaSession?.setPlaybackState(buildPlayingState())
+                Log.d(TAG, "Silent AudioTrack pulsed successfully")
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not pulse silent AudioTrack", e)
+            }
+        }
+    }
+
+    private fun registerPlaybackCallback() {
+        try {
+            audioManager?.registerAudioPlaybackCallback(audioPlaybackCallback, mainHandler)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to register audio playback callback", e)
+        }
+    }
+
+    private fun unregisterPlaybackCallback() {
+        try {
+            audioManager?.unregisterAudioPlaybackCallback(audioPlaybackCallback)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to unregister audio playback callback", e)
+        }
+    }
+
+    private fun buildPlayingState(): PlaybackState {
+        return PlaybackState.Builder()
             .setActions(
                 PlaybackState.ACTION_PLAY or
                 PlaybackState.ACTION_PAUSE or
@@ -53,9 +159,20 @@ class BudsMediaSessionManager(private val context: Context) {
                 PlaybackState.ACTION_FAST_FORWARD or
                 PlaybackState.ACTION_REWIND
             )
-            .setState(PlaybackState.STATE_PAUSED, PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1.0f)
+            .setState(PlaybackState.STATE_PLAYING, 0L, 1.0f)
             .build()
-        session.setPlaybackState(state)
+    }
+
+    private fun initializeSession() {
+        val session = MediaSession(context, SESSION_TAG)
+
+        @Suppress("DEPRECATION")
+        session.setFlags(
+            MediaSession.FLAG_HANDLES_MEDIA_BUTTONS or
+            MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS
+        )
+
+        session.setPlaybackState(buildPlayingState())
 
         session.setCallback(object : MediaSession.Callback() {
             override fun onMediaButtonEvent(mediaButtonIntent: Intent): Boolean {
@@ -67,36 +184,21 @@ class BudsMediaSessionManager(private val context: Context) {
                 }
 
                 if (keyEvent != null) {
-                    val keyName = KeyEvent.keyCodeToString(keyEvent.keyCode)
-                    Log.i(
-                        TAG,
-                        "onMediaButtonEvent intercepted! keyCode=${keyEvent.keyCode} ($keyName), action=${keyEvent.action}, deviceId=${keyEvent.deviceId}"
-                    )
+                    // Only process ACTION_DOWN to avoid double-triggering gestures
+                    if (keyEvent.action == KeyEvent.ACTION_DOWN) {
+                        val keyName = KeyEvent.keyCodeToString(keyEvent.keyCode)
+                        Log.i(
+                            TAG,
+                            "onMediaButtonEvent intercepted ACTION_DOWN: keyCode=${keyEvent.keyCode} ($keyName), deviceId=${keyEvent.deviceId}"
+                        )
+                        eventStore.saveEvent(keyEvent, source = "MediaSession")
+                    }
 
-                    // Record event to LastEventStore with source tag "MediaSession"
-                    eventStore.saveEvent(keyEvent, source = "MediaSession")
-
-                    // Return true to consume the event and confirm our session owns media-button routing
+                    // Return true to consume both ACTION_DOWN and ACTION_UP
                     return true
                 }
 
                 return super.onMediaButtonEvent(mediaButtonIntent)
-            }
-
-            override fun onPlay() {
-                Log.d(TAG, "MediaSession.Callback.onPlay()")
-            }
-
-            override fun onPause() {
-                Log.d(TAG, "MediaSession.Callback.onPause()")
-            }
-
-            override fun onSkipToNext() {
-                Log.d(TAG, "MediaSession.Callback.onSkipToNext()")
-            }
-
-            override fun onSkipToPrevious() {
-                Log.d(TAG, "MediaSession.Callback.onSkipToPrevious()")
             }
         })
 
@@ -108,4 +210,3 @@ class BudsMediaSessionManager(private val context: Context) {
         private const val SESSION_TAG = "BudsMapperMediaSession"
     }
 }
-

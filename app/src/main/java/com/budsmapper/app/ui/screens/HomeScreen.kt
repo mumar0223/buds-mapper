@@ -92,6 +92,7 @@ fun HomeScreen(
     val lastEvent by eventStore.lastEventFlow.collectAsState()
     val detectionState by eventStore.detectionStateFlow.collectAsState()
     val isMediaSessionCaptureEnabled by eventStore.mediaSessionCaptureEnabled.collectAsState()
+    val foregroundPackage by eventStore.currentForegroundPackage.collectAsState()
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -110,11 +111,14 @@ fun HomeScreen(
                 isSessionActive = isMediaSessionCaptureEnabled
             )
 
-            // MEDIASESSION CAPTURE MODE CARD (MILESTONE 2)
+            // MEDIASESSION CAPTURE MODE CARD (PRIORITY ENGINE)
             MediaSessionCaptureCard(
                 isCaptureEnabled = isMediaSessionCaptureEnabled,
                 onToggleCapture = { enabled -> eventStore.setMediaSessionCaptureEnabled(enabled) }
             )
+
+            // ACTIVE APP TRACKER CARD
+            ForegroundAppCard(foregroundPackage = foregroundPackage)
 
             // SERVICE CARD (ACCESSIBILITY SERVICE)
             ServiceCard(
@@ -175,7 +179,7 @@ private fun HeaderSection(isServiceEnabled: Boolean, isSessionActive: Boolean) {
                     color = TextPrimary
                 )
                 Text(
-                    text = "AVRCP & MediaSession Bridge",
+                    text = "Priority MediaSession Engine",
                     style = MaterialTheme.typography.labelSmall,
                     color = TextSecondary
                 )
@@ -183,7 +187,7 @@ private fun HeaderSection(isServiceEnabled: Boolean, isSessionActive: Boolean) {
         }
 
         StatusBadge(
-            label = if (isSessionActive) "SESSION ACTIVE" else if (isServiceEnabled) "ACCESSIBILITY ON" else "OFFLINE",
+            label = if (isSessionActive) "CAPTURE ON" else if (isServiceEnabled) "SERVICE READY" else "OFFLINE",
             isActive = isSessionActive || isServiceEnabled
         )
     }
@@ -200,7 +204,7 @@ private fun MediaSessionCaptureCard(
         colors = CardDefaults.cardColors(containerColor = DarkSurface),
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
-            if (isCaptureEnabled) PrimaryBlue.copy(alpha = 0.6f) else DarkBorder
+            if (isCaptureEnabled) PrimaryBlue.copy(alpha = 0.8f) else DarkBorder
         )
     ) {
         Column(
@@ -221,7 +225,7 @@ private fun MediaSessionCaptureCard(
                         color = TextPrimary
                     )
                     Text(
-                        text = if (isCaptureEnabled) "Active • Listening for Bluetooth AVRCP" else "Inactive • Released to system",
+                        text = if (isCaptureEnabled) "Active • Holding Priority on MediaSessionStack" else "Inactive • Released to system",
                         style = MaterialTheme.typography.labelSmall,
                         color = if (isCaptureEnabled) StatusSuccess else TextSecondary
                     )
@@ -240,7 +244,7 @@ private fun MediaSessionCaptureCard(
             }
 
             Text(
-                text = "Activates a native Android MediaSession to claim media-key priority for wireless earbud gestures. When active, earbud taps (single/double/triple) are intercepted and consumed here.",
+                text = "Runs a zero-volume silent audio stream (USAGE_MEDIA) without claiming audio focus. This satisfies Android's AudioPlayerStateMonitor so Bluetooth earbud taps route to Buds Mapper.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextSecondary
             )
@@ -253,10 +257,56 @@ private fun MediaSessionCaptureCard(
                     .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Text(
-                    text = "⚠️ Notice: While capture mode is ON, earbud gestures may temporarily stop controlling YouTube or Spotify while we verify priority routing.",
+                    text = "⚡ Real-time priority reclamation: Automatically stays ahead of YouTube/Spotify when tracks change.",
                     style = MaterialTheme.typography.labelSmall,
                     color = TextTertiary,
                     lineHeight = 15.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ForegroundAppCard(foregroundPackage: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "Active Foreground App",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextPrimary
+                )
+                Text(
+                    text = foregroundPackage,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = PrimaryBlue,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(DarkSurfaceVariant)
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = "ACCESSIBILITY",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextSecondary,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }
@@ -560,7 +610,7 @@ private fun DiagnosticStatusSection(
             )
 
             val statusMessage = when {
-                isSessionActive -> "MediaSession Capture Mode is ACTIVE. Buds Mapper has registered a native MediaSession to claim media-key priority. Tap your Galaxy Buds Core (single/double/triple tap) to test AVRCP reception."
+                isSessionActive -> "MediaSession Capture Mode is ACTIVE with Silent AudioTrack. Buds Mapper holds priority on MediaSessionStack. Tap your Galaxy Buds Core (single/double/triple tap) to test AVRCP reception."
                 !isServiceEnabled -> "Background AccessibilityService is disabled. Enable it in Settings to keep background services alive."
                 lastEvent != null && lastEvent.source == "AccessibilityService" -> "AccessibilityService is active and capturing physical device buttons (e.g. Volume keys). Enable MediaSession Capture Mode above to test Bluetooth earbud AVRCP commands."
                 else -> "Ready. Enable MediaSession Capture Mode to intercept Bluetooth earbud gestures."
@@ -575,7 +625,7 @@ private fun DiagnosticStatusSection(
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "• Physical hardware buttons route via AccessibilityService.\n• Bluetooth AVRCP commands route via MediaSession.\n• Dual-pipeline diagnostic harness active.",
+                text = "• Physical hardware buttons route via AccessibilityService.\n• Bluetooth AVRCP commands route via MediaSession with AudioTrack priority.\n• Dual-pipeline diagnostic harness active.",
                 style = MaterialTheme.typography.labelSmall,
                 color = TextTertiary,
                 lineHeight = 16.sp
@@ -593,7 +643,7 @@ private fun FooterSection() {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Buds Mapper v1.1.0 — Milestone 2 MediaSession",
+            text = "Buds Mapper v1.2.0 — Milestone 2 Priority Engine",
             style = MaterialTheme.typography.labelSmall,
             color = TextTertiary
         )
