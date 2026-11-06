@@ -1,6 +1,5 @@
 package com.budsmapper.app.ui.screens
 
-import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,6 +22,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -37,13 +37,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.budsmapper.app.data.CommandDetectionState
 import com.budsmapper.app.data.LastEventStore
 import com.budsmapper.app.data.RecordedKeyEvent
@@ -91,6 +91,7 @@ fun HomeScreen(
 
     val lastEvent by eventStore.lastEventFlow.collectAsState()
     val detectionState by eventStore.detectionStateFlow.collectAsState()
+    val isMediaSessionCaptureEnabled by eventStore.mediaSessionCaptureEnabled.collectAsState()
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -104,9 +105,18 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             // HEADER
-            HeaderSection(isServiceEnabled = isServiceEnabled)
+            HeaderSection(
+                isServiceEnabled = isServiceEnabled,
+                isSessionActive = isMediaSessionCaptureEnabled
+            )
 
-            // SERVICE CARD
+            // MEDIASESSION CAPTURE MODE CARD (MILESTONE 2)
+            MediaSessionCaptureCard(
+                isCaptureEnabled = isMediaSessionCaptureEnabled,
+                onToggleCapture = { enabled -> eventStore.setMediaSessionCaptureEnabled(enabled) }
+            )
+
+            // SERVICE CARD (ACCESSIBILITY SERVICE)
             ServiceCard(
                 isServiceEnabled = isServiceEnabled,
                 onEnableClick = { AccessibilityUtils.openAccessibilitySettings(context) }
@@ -121,7 +131,8 @@ fun HomeScreen(
             // DIAGNOSTIC SECTION
             DiagnosticStatusSection(
                 isServiceEnabled = isServiceEnabled,
-                hasEvents = lastEvent != null
+                isSessionActive = isMediaSessionCaptureEnabled,
+                lastEvent = lastEvent
             )
 
             // FOOTER
@@ -131,7 +142,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HeaderSection(isServiceEnabled: Boolean) {
+private fun HeaderSection(isServiceEnabled: Boolean, isSessionActive: Boolean) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -143,7 +154,7 @@ private fun HeaderSection(isServiceEnabled: Boolean) {
         ) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(38.dp)
                     .clip(CircleShape)
                     .background(DarkSurfaceVariant)
                     .border(1.dp, DarkBorder, CircleShape),
@@ -152,7 +163,7 @@ private fun HeaderSection(isServiceEnabled: Boolean) {
                 Text(
                     text = "ᛒ",
                     color = PrimaryBlue,
-                    fontSize = 18.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -164,7 +175,7 @@ private fun HeaderSection(isServiceEnabled: Boolean) {
                     color = TextPrimary
                 )
                 Text(
-                    text = "AVRCP Diagnostic Bridge",
+                    text = "AVRCP & MediaSession Bridge",
                     style = MaterialTheme.typography.labelSmall,
                     color = TextSecondary
                 )
@@ -172,9 +183,83 @@ private fun HeaderSection(isServiceEnabled: Boolean) {
         }
 
         StatusBadge(
-            label = if (isServiceEnabled) "SERVICE ACTIVE" else "SERVICE INACTIVE",
-            isActive = isServiceEnabled
+            label = if (isSessionActive) "SESSION ACTIVE" else if (isServiceEnabled) "ACCESSIBILITY ON" else "OFFLINE",
+            isActive = isSessionActive || isServiceEnabled
         )
+    }
+}
+
+@Composable
+private fun MediaSessionCaptureCard(
+    isCaptureEnabled: Boolean,
+    onToggleCapture: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (isCaptureEnabled) PrimaryBlue.copy(alpha = 0.6f) else DarkBorder
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "MediaSession Capture Mode",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = if (isCaptureEnabled) "Active • Listening for Bluetooth AVRCP" else "Inactive • Released to system",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isCaptureEnabled) StatusSuccess else TextSecondary
+                    )
+                }
+
+                Switch(
+                    checked = isCaptureEnabled,
+                    onCheckedChange = onToggleCapture,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = PrimaryBlue,
+                        uncheckedThumbColor = StatusInactive,
+                        uncheckedTrackColor = DarkSurfaceVariant
+                    )
+                )
+            }
+
+            Text(
+                text = "Activates a native Android MediaSession to claim media-key priority for wireless earbud gestures. When active, earbud taps (single/double/triple) are intercepted and consumed here.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(DarkSurfaceVariant)
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = "⚠️ Notice: While capture mode is ON, earbud gestures may temporarily stop controlling YouTube or Spotify while we verify priority routing.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextTertiary,
+                    lineHeight = 15.sp
+                )
+            }
+        }
     }
 }
 
@@ -215,7 +300,7 @@ private fun ServiceCard(
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Text(
-                        text = if (isServiceEnabled) "Enabled" else "Disabled",
+                        text = if (isServiceEnabled) "Connected" else "Disabled",
                         color = if (isServiceEnabled) StatusSuccess else StatusInactive,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold
@@ -224,7 +309,7 @@ private fun ServiceCard(
             }
 
             Text(
-                text = "Android requires this service with key-event filtering enabled so incoming Bluetooth earbud AVRCP commands can be captured without consuming normal media playback.",
+                text = "Keeps the diagnostic service alive in the background and intercepts physical phone hardware buttons (Volume Up/Down).",
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextSecondary
             )
@@ -323,7 +408,7 @@ private fun CommandRow(
             )
             if (detected && timestamp > 0) {
                 Text(
-                    text = "First detected: ${formatTimestamp(timestamp)}",
+                    text = "Detected at ${formatTimestamp(timestamp)}",
                     style = MaterialTheme.typography.labelSmall,
                     color = TextTertiary
                 )
@@ -362,11 +447,36 @@ private fun LastEventSection(lastEvent: RecordedKeyEvent?) {
                 .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = "Last Received Event",
-                style = MaterialTheme.typography.titleLarge,
-                color = TextPrimary
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Last Received Event",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = TextPrimary
+                )
+
+                if (lastEvent != null) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(
+                                if (lastEvent.source == "MediaSession") PrimaryBlue.copy(alpha = 0.2f)
+                                else DarkSurfaceVariant
+                            )
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = lastEvent.source,
+                            color = if (lastEvent.source == "MediaSession") PrimaryBlue else TextSecondary,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
 
             if (lastEvent == null) {
                 Box(
@@ -378,7 +488,7 @@ private fun LastEventSection(lastEvent: RecordedKeyEvent?) {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No key events recorded yet",
+                        text = "No events recorded yet",
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextSecondary
                     )
@@ -396,6 +506,7 @@ private fun LastEventSection(lastEvent: RecordedKeyEvent?) {
                     EventDataRow(label = "Action", value = lastEvent.action)
                     EventDataRow(label = "Timestamp", value = formatTimestamp(lastEvent.timestamp))
                     EventDataRow(label = "Device ID", value = "${lastEvent.deviceId}")
+                    EventDataRow(label = "Received Via", value = lastEvent.source)
                 }
             }
         }
@@ -427,7 +538,8 @@ private fun EventDataRow(label: String, value: String) {
 @Composable
 private fun DiagnosticStatusSection(
     isServiceEnabled: Boolean,
-    hasEvents: Boolean
+    isSessionActive: Boolean,
+    lastEvent: RecordedKeyEvent?
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -448,9 +560,10 @@ private fun DiagnosticStatusSection(
             )
 
             val statusMessage = when {
-                !isServiceEnabled -> "Background AccessibilityService is disabled. Enable the service in Android Settings to begin capturing hardware KeyEvents."
-                !hasEvents -> "AccessibilityService is active and listening. No Bluetooth media commands have been detected yet. Connect Galaxy Buds Core, trigger a gesture in a media app (e.g. YouTube), and check here."
-                else -> "KeyEvents successfully intercepted! Check the monitor above to confirm whether Samsung Galaxy Buds Core AVRCP maps into standard KeyEvents."
+                isSessionActive -> "MediaSession Capture Mode is ACTIVE. Buds Mapper has registered a native MediaSession to claim media-key priority. Tap your Galaxy Buds Core (single/double/triple tap) to test AVRCP reception."
+                !isServiceEnabled -> "Background AccessibilityService is disabled. Enable it in Settings to keep background services alive."
+                lastEvent != null && lastEvent.source == "AccessibilityService" -> "AccessibilityService is active and capturing physical device buttons (e.g. Volume keys). Enable MediaSession Capture Mode above to test Bluetooth earbud AVRCP commands."
+                else -> "Ready. Enable MediaSession Capture Mode to intercept Bluetooth earbud gestures."
             }
 
             Text(
@@ -462,7 +575,7 @@ private fun DiagnosticStatusSection(
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "• Event delivery is tested live on physical hardware.\n• Service operates independently of this UI.\n• Events are forwarded without consumption (return false).",
+                text = "• Physical hardware buttons route via AccessibilityService.\n• Bluetooth AVRCP commands route via MediaSession.\n• Dual-pipeline diagnostic harness active.",
                 style = MaterialTheme.typography.labelSmall,
                 color = TextTertiary,
                 lineHeight = 16.sp
@@ -480,7 +593,7 @@ private fun FooterSection() {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Buds Mapper v1.0.0",
+            text = "Buds Mapper v1.1.0 — Milestone 2 MediaSession",
             style = MaterialTheme.typography.labelSmall,
             color = TextTertiary
         )
@@ -514,4 +627,3 @@ private fun formatTimestamp(millis: Long): String {
     val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
     return sdf.format(Date(millis))
 }
-

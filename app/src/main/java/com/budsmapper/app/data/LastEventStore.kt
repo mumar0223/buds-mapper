@@ -12,7 +12,8 @@ data class RecordedKeyEvent(
     val keyName: String,
     val action: String,
     val timestamp: Long,
-    val deviceId: Int
+    val deviceId: Int,
+    val source: String = "AccessibilityService" // "AccessibilityService" or "MediaSession"
 )
 
 data class CommandDetectionState(
@@ -38,23 +39,45 @@ class LastEventStore(context: Context) {
     private val _detectionStateFlow = MutableStateFlow(loadDetectionState())
     val detectionStateFlow: StateFlow<CommandDetectionState> = _detectionStateFlow.asStateFlow()
 
-    private val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
-        _lastEventFlow.value = loadLastEvent()
-        _detectionStateFlow.value = loadDetectionState()
+    private val _mediaSessionCaptureEnabled = MutableStateFlow(
+        prefs.getBoolean(KEY_MEDIA_SESSION_CAPTURE_ENABLED, false)
+    )
+    val mediaSessionCaptureEnabled: StateFlow<Boolean> = _mediaSessionCaptureEnabled.asStateFlow()
+
+    private val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        when (key) {
+            KEY_MEDIA_SESSION_CAPTURE_ENABLED -> {
+                _mediaSessionCaptureEnabled.value = prefs.getBoolean(KEY_MEDIA_SESSION_CAPTURE_ENABLED, false)
+            }
+            KEY_CODE, KEY_SOURCE -> {
+                _lastEventFlow.value = loadLastEvent()
+            }
+            KEY_CMD_PLAY_DETECTED, KEY_CMD_PAUSE_DETECTED, KEY_CMD_NEXT_DETECTED, KEY_CMD_PREV_DETECTED -> {
+                _detectionStateFlow.value = loadDetectionState()
+            }
+        }
     }
 
     init {
         prefs.registerOnSharedPreferenceChangeListener(listener)
     }
 
-    fun saveEvent(event: KeyEvent) {
+    fun setMediaSessionCaptureEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_MEDIA_SESSION_CAPTURE_ENABLED, enabled).apply()
+        _mediaSessionCaptureEnabled.value = enabled
+    }
+
+    fun isMediaSessionCaptureEnabled(): Boolean {
+        return prefs.getBoolean(KEY_MEDIA_SESSION_CAPTURE_ENABLED, false)
+    }
+
+    fun saveEvent(event: KeyEvent, source: String = "AccessibilityService") {
         val keyCode = event.keyCode
         val keyName = KeyEvent.keyCodeToString(keyCode)
         val action = when (event.action) {
             KeyEvent.ACTION_DOWN -> "ACTION_DOWN"
             KeyEvent.ACTION_UP -> "ACTION_UP"
-            KeyEvent.ACTION_MULTIPLE -> "ACTION_MULTIPLE"
-            else -> "ACTION_UNKNOWN (${event.action})"
+            else -> "ACTION(${event.action})"
         }
         val timestamp = System.currentTimeMillis()
         val deviceId = event.deviceId
@@ -65,6 +88,7 @@ class LastEventStore(context: Context) {
             .putString(KEY_ACTION, action)
             .putLong(KEY_TIMESTAMP, timestamp)
             .putInt(KEY_DEVICE_ID, deviceId)
+            .putString(KEY_SOURCE, source)
 
         when (keyCode) {
             KeyEvent.KEYCODE_MEDIA_PLAY -> {
@@ -96,6 +120,7 @@ class LastEventStore(context: Context) {
     fun reload() {
         _lastEventFlow.value = loadLastEvent()
         _detectionStateFlow.value = loadDetectionState()
+        _mediaSessionCaptureEnabled.value = prefs.getBoolean(KEY_MEDIA_SESSION_CAPTURE_ENABLED, false)
     }
 
     private fun loadLastEvent(): RecordedKeyEvent? {
@@ -105,7 +130,8 @@ class LastEventStore(context: Context) {
             keyName = prefs.getString(KEY_NAME, "UNKNOWN") ?: "UNKNOWN",
             action = prefs.getString(KEY_ACTION, "UNKNOWN") ?: "UNKNOWN",
             timestamp = prefs.getLong(KEY_TIMESTAMP, 0L),
-            deviceId = prefs.getInt(KEY_DEVICE_ID, 0)
+            deviceId = prefs.getInt(KEY_DEVICE_ID, 0),
+            source = prefs.getString(KEY_SOURCE, "AccessibilityService") ?: "AccessibilityService"
         )
     }
 
@@ -129,6 +155,8 @@ class LastEventStore(context: Context) {
         private const val KEY_ACTION = "last_action"
         private const val KEY_TIMESTAMP = "last_timestamp"
         private const val KEY_DEVICE_ID = "last_device_id"
+        private const val KEY_SOURCE = "last_source"
+        private const val KEY_MEDIA_SESSION_CAPTURE_ENABLED = "media_session_capture_enabled"
 
         private const val KEY_CMD_PLAY_DETECTED = "cmd_play_detected"
         private const val KEY_CMD_PLAY_TIME = "cmd_play_time"
@@ -149,4 +177,3 @@ class LastEventStore(context: Context) {
         }
     }
 }
-
