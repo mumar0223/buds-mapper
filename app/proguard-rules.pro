@@ -1,0 +1,1 @@
+# Buds Mapper ProGuard Rules
