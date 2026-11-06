@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Buds Mapper</string>
+    <string name="accessibility_service_name">Buds Mapper Diagnostic Service</string>
+    <string name="accessibility_service_description">Detects Bluetooth earbud media button events (Play, Pause, Next, Previous) to verify AVRCP command routing.</string>
+</resources>
