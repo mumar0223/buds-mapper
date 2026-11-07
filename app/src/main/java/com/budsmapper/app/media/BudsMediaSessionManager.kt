@@ -310,6 +310,20 @@ class BudsMediaSessionManager(private val context: Context) {
                         return false
                     }
 
+                    // Test Capture Mode override: capture and log any earbud tap for instant verification
+                    if (eventStore.isTestCaptureForced.value) {
+                        if (keyEvent.action == KeyEvent.ACTION_DOWN) {
+                            val keyName = KeyEvent.keyCodeToString(keyEvent.keyCode)
+                            Log.i(TAG, "Test Capture active: intercepted $keyName")
+                            eventStore.saveEvent(
+                                keyEvent,
+                                source = "MediaSession",
+                                mappedAction = "Test Capture ($keyName)"
+                            )
+                        }
+                        return true
+                    }
+
                     val currentPkg = eventStore.currentForegroundPackage.value
                     val currentLabel = eventStore.currentForegroundLabel.value
                     val profileStore = AppProfileStore.getInstance(context)

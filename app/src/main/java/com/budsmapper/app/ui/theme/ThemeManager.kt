@@ -17,10 +17,10 @@ enum class ThemeMode {
 }
 
 enum class AccentTheme(val id: String, val displayName: String) {
-    FUSION("FUSION", "⚡ Fusion"),
-    BLUE("BLUE", "💧 Cyber Blue"),
-    RED("RED", "🔥 Hyper Red"),
-    MINT("MINT", "🍃 Cyber Mint");
+    FUSION("FUSION", "Fusion Synergy"),
+    BLUE("BLUE", "Cyber Ice Blue"),
+    RED("RED", "Hyper Crimson Red"),
+    MINT("MINT", "Neon Cyber Mint");
 
     companion object {
         fun fromId(id: String): AccentTheme = entries.find { it.id == id } ?: FUSION
@@ -77,10 +77,10 @@ class ThemeStore private constructor(context: Context) {
             when (accent) {
                 AccentTheme.FUSION -> ThemePalette(
                     isDark = true,
-                    backgroundColor = Color(0xFF0C1019),
-                    cardBackground = Color(0xFF141926),
-                    cardBorder = Color(0xFF252E46),
-                    cardBorderActive = Color(0xFF5E81F4).copy(alpha = 0.5f),
+                    backgroundColor = Color(0xFF0B0E17),
+                    cardBackground = Color(0x99131826), // Frosted glass dark slate
+                    cardBorder = Color(0x383F5278),
+                    cardBorderActive = Color(0xFF5E81F4).copy(alpha = 0.55f),
                     primaryAccent = Color(0xFF5E81F4), // Cyber Ice Blue
                     statusAccent = Color(0xFF00E5A3),  // Neon Cyber Mint
                     actionAccent = Color(0xFFFF3B5C),  // Hyper Crimson
@@ -93,10 +93,10 @@ class ThemeStore private constructor(context: Context) {
                 )
                 AccentTheme.BLUE -> ThemePalette(
                     isDark = true,
-                    backgroundColor = Color(0xFF0C1019),
-                    cardBackground = Color(0xFF141926),
-                    cardBorder = Color(0xFF252E46),
-                    cardBorderActive = Color(0xFF5E81F4).copy(alpha = 0.6f),
+                    backgroundColor = Color(0xFF0B0E17),
+                    cardBackground = Color(0x99131826),
+                    cardBorder = Color(0x383F5278),
+                    cardBorderActive = Color(0xFF5E81F4).copy(alpha = 0.65f),
                     primaryAccent = Color(0xFF5E81F4),
                     statusAccent = Color(0xFF5E81F4),
                     actionAccent = Color(0xFF6C8EEF),
@@ -109,10 +109,10 @@ class ThemeStore private constructor(context: Context) {
                 )
                 AccentTheme.RED -> ThemePalette(
                     isDark = true,
-                    backgroundColor = Color(0xFF0F0E17),
-                    cardBackground = Color(0xFF181422),
-                    cardBorder = Color(0xFF332538),
-                    cardBorderActive = Color(0xFFFF3B5C).copy(alpha = 0.6f),
+                    backgroundColor = Color(0xFF0F0D15),
+                    cardBackground = Color(0x99181322),
+                    cardBorder = Color(0x384E3754),
+                    cardBorderActive = Color(0xFFFF3B5C).copy(alpha = 0.65f),
                     primaryAccent = Color(0xFFFF3B5C),
                     statusAccent = Color(0xFFFF3B5C),
                     actionAccent = Color(0xFFFF2A55),
@@ -125,10 +125,10 @@ class ThemeStore private constructor(context: Context) {
                 )
                 AccentTheme.MINT -> ThemePalette(
                     isDark = true,
-                    backgroundColor = Color(0xFF0A1215),
-                    cardBackground = Color(0xFF111E20),
-                    cardBorder = Color(0xFF1E383A),
-                    cardBorderActive = Color(0xFF00E5A3).copy(alpha = 0.6f),
+                    backgroundColor = Color(0xFF091114),
+                    cardBackground = Color(0x99101C1E),
+                    cardBorder = Color(0x382B4F52),
+                    cardBorderActive = Color(0xFF00E5A3).copy(alpha = 0.65f),
                     primaryAccent = Color(0xFF00E5A3),
                     statusAccent = Color(0xFF00E5A3),
                     actionAccent = Color(0xFF00D28E),
@@ -141,69 +141,69 @@ class ThemeStore private constructor(context: Context) {
                 )
             }
         } else {
-            // Light Mode (Samsung Clock inspired crisp aesthetic with pastel aura)
+            // Light Mode (Frosted glass porcelain aesthetic with soft pastel aura)
             when (accent) {
                 AccentTheme.FUSION -> ThemePalette(
                     isDark = false,
-                    backgroundColor = Color(0xFFF8F9FD),
-                    cardBackground = Color(0xFFFFFFFF),
-                    cardBorder = Color(0xFFE2E8F0),
-                    cardBorderActive = Color(0xFF4C6EF5).copy(alpha = 0.5f),
+                    backgroundColor = Color(0xFFF7F8FC),
+                    cardBackground = Color(0xDEFFFFFF),
+                    cardBorder = Color(0x55CBD5E1),
+                    cardBorderActive = Color(0xFF4C6EF5).copy(alpha = 0.50f),
                     primaryAccent = Color(0xFF4C6EF5),
                     statusAccent = Color(0xFF10B981),
                     actionAccent = Color(0xFFEF4444),
                     textPrimary = Color(0xFF0F172A),
                     textSecondary = Color(0xFF475569),
                     textMuted = Color(0xFF94A3B8),
-                    auraColor = Color(0xFFC7D2FE), // Lavender pastel
+                    auraColor = Color(0xFFC7D2FE),
                     auraAlpha = 0.35f,
                     buttonOutlineBackground = Color(0xFFF1F5F9)
                 )
                 AccentTheme.BLUE -> ThemePalette(
                     isDark = false,
-                    backgroundColor = Color(0xFFF8F9FD),
-                    cardBackground = Color(0xFFFFFFFF),
-                    cardBorder = Color(0xFFE2E8F0),
-                    cardBorderActive = Color(0xFF3B82F6).copy(alpha = 0.5f),
+                    backgroundColor = Color(0xFFF7F8FC),
+                    cardBackground = Color(0xDEFFFFFF),
+                    cardBorder = Color(0x55CBD5E1),
+                    cardBorderActive = Color(0xFF3B82F6).copy(alpha = 0.50f),
                     primaryAccent = Color(0xFF3B82F6),
                     statusAccent = Color(0xFF3B82F6),
                     actionAccent = Color(0xFF2563EB),
                     textPrimary = Color(0xFF0F172A),
                     textSecondary = Color(0xFF475569),
                     textMuted = Color(0xFF94A3B8),
-                    auraColor = Color(0xFFBFDBFE), // Ice pastel
+                    auraColor = Color(0xFFBFDBFE),
                     auraAlpha = 0.35f,
                     buttonOutlineBackground = Color(0xFFEFF6FF)
                 )
                 AccentTheme.RED -> ThemePalette(
                     isDark = false,
-                    backgroundColor = Color(0xFFFFF8F9),
-                    cardBackground = Color(0xFFFFFFFF),
-                    cardBorder = Color(0xFFFCE7F3),
-                    cardBorderActive = Color(0xFFE11D48).copy(alpha = 0.5f),
+                    backgroundColor = Color(0xFFFFF7F8),
+                    cardBackground = Color(0xDEFFFFFF),
+                    cardBorder = Color(0x55FBCFE8),
+                    cardBorderActive = Color(0xFFE11D48).copy(alpha = 0.50f),
                     primaryAccent = Color(0xFFE11D48),
                     statusAccent = Color(0xFFE11D48),
                     actionAccent = Color(0xFFBE123C),
                     textPrimary = Color(0xFF1E1015),
                     textSecondary = Color(0xFF6F525E),
                     textMuted = Color(0xFF9E8590),
-                    auraColor = Color(0xFFFECDD3), // Rose pastel
+                    auraColor = Color(0xFFFECDD3),
                     auraAlpha = 0.35f,
                     buttonOutlineBackground = Color(0xFFFFF1F2)
                 )
                 AccentTheme.MINT -> ThemePalette(
                     isDark = false,
-                    backgroundColor = Color(0xFFF6FDF9),
-                    cardBackground = Color(0xFFFFFFFF),
-                    cardBorder = Color(0xFFD1FAE5),
-                    cardBorderActive = Color(0xFF059669).copy(alpha = 0.5f),
+                    backgroundColor = Color(0xFFF5FCF8),
+                    cardBackground = Color(0xDEFFFFFF),
+                    cardBorder = Color(0x55A7F3D0),
+                    cardBorderActive = Color(0xFF059669).copy(alpha = 0.50f),
                     primaryAccent = Color(0xFF059669),
                     statusAccent = Color(0xFF059669),
                     actionAccent = Color(0xFF047857),
                     textPrimary = Color(0xFF062118),
                     textSecondary = Color(0xFF3F6557),
                     textMuted = Color(0xFF75978A),
-                    auraColor = Color(0xFFA7F3D0), // Mint pastel
+                    auraColor = Color(0xFFA7F3D0),
                     auraAlpha = 0.35f,
                     buttonOutlineBackground = Color(0xFFECFDF5)
                 )
@@ -237,4 +237,3 @@ object AppTheme {
         @ReadOnlyComposable
         get() = LocalThemePalette.current
 }
-

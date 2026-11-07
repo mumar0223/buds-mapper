@@ -40,37 +40,43 @@ class BudsAccessibilityService : AccessibilityService() {
 
         // Smart Auto-Engagement:
         // Dynamically activates MediaSession capture ONLY when Master Switch is ON AND
-        // an application with an ENABLED profile is in the foreground.
+        // (an application with an ENABLED profile is active OR Test Capture Mode is forced).
         // Automatically releases immediately when Master is OFF or switching to unmapped apps!
         serviceScope.launch {
             combine(
                 eventStore.isMasterEnabled,
+                eventStore.isTestCaptureForced,
                 eventStore.currentForegroundPackage,
                 profileStore.enabledPackages
-            ) { isMasterEnabled, pkg, enabledSet ->
-                isMasterEnabled && enabledSet.contains(pkg)
+            ) { isMasterEnabled, isTestForced, pkg, enabledSet ->
+                isMasterEnabled && (isTestForced || enabledSet.contains(pkg))
             }.collect { isEnabledForForegroundApp ->
                 Log.i(
                     TAG,
-                    "Dynamic capture state changed: isEnabled=$isEnabledForForegroundApp (master=${eventStore.isMasterEnabled.value}) for foreground pkg: ${eventStore.currentForegroundPackage.value}"
+                    "Dynamic capture state changed: isEnabled=$isEnabledForForegroundApp (master=${eventStore.isMasterEnabled.value}, testForced=${eventStore.isTestCaptureForced.value}) for foreground pkg: ${eventStore.currentForegroundPackage.value}"
                 )
                 mediaSessionManager.setCaptureEnabled(isEnabledForForegroundApp)
                 eventStore.setMediaSessionCaptureEnabled(isEnabledForForegroundApp)
             }
         }
 
-        // Reactively sync notification whenever toggle, foreground app, or app profile changes
+        // Reactively sync notification whenever toggle, foreground app, app profile, or master switch changes
         serviceScope.launch {
             combine(
+                eventStore.isMasterEnabled,
                 eventStore.statusNotificationEnabled,
                 eventStore.currentForegroundPackage,
                 eventStore.currentForegroundLabel,
                 profileStore.enabledPackages
-            ) { enabled, pkg, label, _ ->
-                Triple(enabled, pkg, label)
-            }.collect { (enabled, pkg, label) ->
-                if (enabled) {
-                    statusNotificationManager.updateNotification(label, pkg)
+            ) { isMaster, notifEnabled, pkg, label, _ ->
+                if (isMaster && notifEnabled) {
+                    Pair(true, Pair(label, pkg))
+                } else {
+                    Pair(false, Pair(label, pkg))
+                }
+            }.collect { (showNotification, info) ->
+                if (showNotification) {
+                    statusNotificationManager.updateNotification(info.first, info.second)
                 } else {
                     statusNotificationManager.cancelNotification()
                 }

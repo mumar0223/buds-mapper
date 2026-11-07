@@ -45,6 +45,14 @@ class LastEventStore(context: Context) {
     )
     val isMasterEnabled: StateFlow<Boolean> = _isMasterEnabled.asStateFlow()
 
+    // Transient in-memory test capture override (never persisted to disk!)
+    private val _isTestCaptureForced = MutableStateFlow(false)
+    val isTestCaptureForced: StateFlow<Boolean> = _isTestCaptureForced.asStateFlow()
+
+    fun setTestCaptureForced(forced: Boolean) {
+        _isTestCaptureForced.value = forced
+    }
+
     private val _mediaSessionCaptureEnabled = MutableStateFlow(
         prefs.getBoolean(KEY_MEDIA_SESSION_CAPTURE_ENABLED, true)
     )

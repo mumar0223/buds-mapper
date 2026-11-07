@@ -31,8 +31,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.budsmapper.app.ui.components.AppRootScaffold
+import com.budsmapper.app.ui.components.CheckmarkIcon
+import com.budsmapper.app.ui.components.DropletIcon
+import com.budsmapper.app.ui.components.FlameIcon
 import com.budsmapper.app.ui.components.GameSpaceCard
+import com.budsmapper.app.ui.components.LeafIcon
+import com.budsmapper.app.ui.components.MoonIcon
 import com.budsmapper.app.ui.components.NeonBadge
+import com.budsmapper.app.ui.components.SunIcon
+import com.budsmapper.app.ui.components.ZapIcon
 import com.budsmapper.app.ui.theme.AccentTheme
 import com.budsmapper.app.ui.theme.AppTheme
 import com.budsmapper.app.ui.theme.ThemeMode
@@ -61,7 +68,7 @@ fun SettingsScreen(
                 .padding(horizontal = 20.dp)
                 .padding(top = topPad, bottom = bottomPad)
         ) {
-            // Card 1: Theme Mode (Dark vs Light)
+            // Card 1: Theme Mode (Dark vs Light - Zero Emojis)
             GameSpaceCard {
                 Text(
                     text = "Theme Appearance",
@@ -70,37 +77,39 @@ fun SettingsScreen(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Switch between Realme Game Space dark & Samsung Clock light",
+                    text = "Switch between dark slate and bright porcelain themes",
                     color = palette.textSecondary,
                     fontSize = 12.sp
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     ThemeModeSelector(
-                        title = "🌙 Dark Mode",
-                        description = "Game Space Aurora",
+                        title = "Dark Mode",
+                        description = "Deep slate with dynamic aura",
                         isSelected = currentMode == ThemeMode.DARK,
+                        icon = { MoonIcon(color = if (currentMode == ThemeMode.DARK) palette.primaryAccent else palette.textMuted) },
                         onClick = { themeStore.setThemeMode(ThemeMode.DARK) },
                         modifier = Modifier.weight(1f)
                     )
                     ThemeModeSelector(
-                        title = "☀️ Light Mode",
-                        description = "Samsung Pastel",
+                        title = "Light Mode",
+                        description = "Crisp white with soft aura",
                         isSelected = currentMode == ThemeMode.LIGHT,
+                        icon = { SunIcon(color = if (currentMode == ThemeMode.LIGHT) palette.primaryAccent else palette.textMuted) },
                         onClick = { themeStore.setThemeMode(ThemeMode.LIGHT) },
                         modifier = Modifier.weight(1f)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            // Card 2: Accent Color Palette (Fusion, Blue, Red, Mint)
+            // Card 2: Accent Color Palette (Fusion, Blue, Red, Mint - Zero Emojis)
             GameSpaceCard {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -115,7 +124,7 @@ fun SettingsScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Glow aura, buttons & indicator styling",
+                            text = "Ambient aura, buttons & indicator styling",
                             color = palette.textSecondary,
                             fontSize = 12.sp
                         )
@@ -126,52 +135,56 @@ fun SettingsScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     AccentRow(
                         accent = AccentTheme.FUSION,
-                        label = "⚡ Fusion Synergy (Default)",
+                        label = "Fusion Synergy (Default)",
                         description = "Ice Blue (Brand) + Neon Mint (Status) + Crimson (Actions)",
                         swatchColor = Color(0xFF5E81F4),
+                        icon = { ZapIcon(color = Color.White, size = 15.dp) },
                         isSelected = currentAccent == AccentTheme.FUSION,
                         onClick = { themeStore.setAccentTheme(AccentTheme.FUSION) }
                     )
                     AccentRow(
                         accent = AccentTheme.BLUE,
-                        label = "💧 Cyber Ice Blue",
-                        description = "Low power mode icy periwinkle neon theme",
+                        label = "Cyber Ice Blue",
+                        description = "Icy periwinkle neon theme",
                         swatchColor = Color(0xFF5E81F4),
+                        icon = { DropletIcon(color = Color.White, size = 15.dp) },
                         isSelected = currentAccent == AccentTheme.BLUE,
                         onClick = { themeStore.setAccentTheme(AccentTheme.BLUE) }
                     )
                     AccentRow(
                         accent = AccentTheme.RED,
-                        label = "🔥 Hyper Crimson Red",
-                        description = "Competition mode aggressive red gaming theme",
+                        label = "Hyper Crimson Red",
+                        description = "Aggressive red gaming theme",
                         swatchColor = Color(0xFFFF3B5C),
+                        icon = { FlameIcon(color = Color.White, size = 15.dp) },
                         isSelected = currentAccent == AccentTheme.RED,
                         onClick = { themeStore.setAccentTheme(AccentTheme.RED) }
                     )
                     AccentRow(
                         accent = AccentTheme.MINT,
-                        label = "🍃 Neon Cyber Mint",
-                        description = "Balanced mode futuristic emerald teal theme",
+                        label = "Neon Cyber Mint",
+                        description = "Futuristic emerald teal theme",
                         swatchColor = Color(0xFF00E5A3),
+                        icon = { LeafIcon(color = Color.White, size = 15.dp) },
                         isSelected = currentAccent == AccentTheme.MINT,
                         onClick = { themeStore.setAccentTheme(AccentTheme.MINT) }
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Card 3: About Buds Mapper
             GameSpaceCard {
                 Text(
                     text = "Buds Mapper Engine",
                     color = palette.textPrimary,
-                    fontSize = 17.sp,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
@@ -180,13 +193,13 @@ fun SettingsScreen(
                     fontSize = 12.sp
                 )
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 Text(
                     text = "Configured exclusively for Samsung Galaxy Buds Core and physical devices running Android 14 (One UI 6.1). Features native sub-audible PCM priority hold and hardware gesture injection.",
                     color = palette.textMuted,
                     fontSize = 12.sp,
-                    lineHeight = 18.sp
+                    lineHeight = 17.sp
                 )
             }
         }
@@ -198,6 +211,7 @@ private fun ThemeModeSelector(
     title: String,
     description: String,
     isSelected: Boolean,
+    icon: @Composable () -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -215,6 +229,8 @@ private fun ThemeModeSelector(
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            icon()
+            Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = title,
                 color = if (isSelected) palette.primaryAccent else palette.textPrimary,
@@ -237,6 +253,7 @@ private fun AccentRow(
     label: String,
     description: String,
     swatchColor: Color,
+    icon: @Composable () -> Unit,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
@@ -256,12 +273,15 @@ private fun AccentRow(
     ) {
         Box(
             modifier = Modifier
-                .size(24.dp)
+                .size(28.dp)
                 .clip(CircleShape)
                 .background(swatchColor)
-                .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape)
-        )
-        Spacer(modifier = Modifier.width(14.dp))
+                .border(1.5.dp, Color.White.copy(alpha = 0.8f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            icon()
+        }
+        Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = label,
@@ -278,19 +298,13 @@ private fun AccentRow(
         if (isSelected) {
             Box(
                 modifier = Modifier
-                    .size(18.dp)
+                    .size(20.dp)
                     .clip(CircleShape)
                     .background(palette.primaryAccent),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "✓",
-                    color = Color.White,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                CheckmarkIcon(color = Color.White, size = 12.dp)
             }
         }
     }
 }
-

@@ -1,7 +1,9 @@
 package com.budsmapper.app.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,6 +18,7 @@ import com.budsmapper.app.ui.screens.HomeScreen
 import com.budsmapper.app.ui.screens.SettingsScreen
 import com.budsmapper.app.ui.screens.TestDiagnosticsScreen
 import com.budsmapper.app.ui.theme.LocalThemePalette
+import com.budsmapper.app.ui.theme.ThemeMode
 import com.budsmapper.app.ui.theme.ThemeStore
 
 sealed interface Screen {
@@ -30,7 +33,8 @@ sealed interface Screen {
 fun BudsMapperApp(
     eventStore: LastEventStore,
     profileStore: AppProfileStore = AppProfileStore.getInstance(LocalContext.current),
-    themeStore: ThemeStore = ThemeStore.getInstance(LocalContext.current)
+    themeStore: ThemeStore = ThemeStore.getInstance(LocalContext.current),
+    onThemeModeChanged: (isDark: Boolean) -> Unit = {}
 ) {
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
 
@@ -38,6 +42,23 @@ fun BudsMapperApp(
     val currentAccent by themeStore.accentTheme.collectAsState()
     val palette = remember(currentMode, currentAccent) {
         themeStore.getPalette(currentMode, currentAccent)
+    }
+
+    // Notify activity to dynamically update system status bar icons (white in dark mode, dark in light mode)
+    LaunchedEffect(currentMode) {
+        onThemeModeChanged(currentMode == ThemeMode.DARK)
+    }
+
+    // Android Hardware Back Button Handler:
+    // Sub-pages navigate back to the previous screen; on Home, it exits the app naturally!
+    BackHandler(enabled = currentScreen != Screen.Home) {
+        currentScreen = when (currentScreen) {
+            is Screen.GestureMapping -> Screen.AppProfiles
+            is Screen.AppProfiles -> Screen.Home
+            is Screen.TestDiagnostics -> Screen.Home
+            is Screen.Settings -> Screen.Home
+            is Screen.Home -> Screen.Home
+        }
     }
 
     CompositionLocalProvider(LocalThemePalette provides palette) {

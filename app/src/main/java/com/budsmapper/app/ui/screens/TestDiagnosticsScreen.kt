@@ -12,12 +12,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -27,11 +27,15 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.budsmapper.app.accessibility.BudsAccessibilityService
 import com.budsmapper.app.data.LastEventStore
 import com.budsmapper.app.ui.components.AppRootScaffold
 import com.budsmapper.app.ui.components.GameSpaceCard
 import com.budsmapper.app.ui.components.NeonBadge
+import com.budsmapper.app.ui.components.NeonSwitch
 import com.budsmapper.app.ui.theme.AppTheme
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -44,10 +48,27 @@ fun TestDiagnosticsScreen(
 ) {
     val palette = AppTheme.palette
     val scrollState = rememberScrollState()
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     val lastEvent by eventStore.lastEventFlow.collectAsState()
     val detectionState by eventStore.detectionStateFlow.collectAsState()
+    val isTestCaptureForced by eventStore.isTestCaptureForced.collectAsState()
     val isAccessibilityActive = BudsAccessibilityService.instance != null
+
+    // Automatic shutoff: As soon as the user navigates back OR minimizes the app,
+    // turn OFF test capture mode so normal foreground app routing resumes immediately!
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) {
+                eventStore.setTestCaptureForced(false)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            eventStore.setTestCaptureForced(false)
+        }
+    }
 
     AppRootScaffold(
         title = "Test & Monitor",
@@ -61,6 +82,44 @@ fun TestDiagnosticsScreen(
                 .padding(horizontal = 20.dp)
                 .padding(top = topPad, bottom = bottomPad)
         ) {
+            // Card 0: Test Capture Mode Toggle (Auto-Off on Exit)
+            GameSpaceCard(isActive = isTestCaptureForced) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Test Capture Mode",
+                            color = palette.textPrimary,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = if (isTestCaptureForced)
+                                "Active · Tap earbuds now to test capture"
+                            else
+                                "Forces capture ON inside Buds Mapper for testing (auto-off on exit)",
+                            color = if (isTestCaptureForced) palette.statusAccent else palette.textMuted,
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp
+                        )
+                    }
+
+                    NeonSwitch(
+                        checked = isTestCaptureForced,
+                        onCheckedChange = { forced ->
+                            eventStore.setTestCaptureForced(forced)
+                        },
+                        accentColor = palette.statusAccent
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
             // Card 1: Live Command Monitor
             GameSpaceCard {
                 Row(
@@ -72,7 +131,7 @@ fun TestDiagnosticsScreen(
                         Text(
                             text = "Live Command Monitor",
                             color = palette.textPrimary,
-                            fontSize = 17.sp,
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
@@ -84,9 +143,9 @@ fun TestDiagnosticsScreen(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(palette.cardBorder)
+                            .background(palette.cardBorder.copy(alpha = 0.5f))
                             .clickable { eventStore.clearHistory() }
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                            .padding(horizontal = 10.dp, vertical = 5.dp)
                     ) {
                         Text(
                             text = "Clear Log",
@@ -97,7 +156,7 @@ fun TestDiagnosticsScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 // Detected command indicators grid
                 Row(
@@ -127,7 +186,7 @@ fun TestDiagnosticsScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Card 2: Last Received Event Inspector
             GameSpaceCard {
@@ -139,7 +198,7 @@ fun TestDiagnosticsScreen(
                     Text(
                         text = "Last Received Event",
                         color = palette.textPrimary,
-                        fontSize = 17.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
                     if (lastEvent != null) {
@@ -150,7 +209,7 @@ fun TestDiagnosticsScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 if (lastEvent != null) {
                     val event = lastEvent!!
@@ -172,27 +231,27 @@ fun TestDiagnosticsScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 18.dp),
+                            .padding(vertical = 16.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "No earbud taps recorded yet.\nDouble-tap or tap your Galaxy Buds now.",
+                            text = "No earbud taps recorded yet.\nTurn on Test Capture Mode or double-tap your Galaxy Buds.",
                             color = palette.textMuted,
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Card 3: Service Health Diagnostics
             GameSpaceCard {
                 Text(
                     text = "System Diagnostics",
                     color = palette.textPrimary,
-                    fontSize = 17.sp,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
@@ -201,7 +260,7 @@ fun TestDiagnosticsScreen(
                     fontSize = 12.sp
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 DiagnosticRow(
                     title = "Accessibility Engine",
@@ -210,7 +269,7 @@ fun TestDiagnosticsScreen(
                     isGood = isAccessibilityActive
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 DiagnosticRow(
                     title = "Sub-Audible Dual AudioTracks",
@@ -219,7 +278,7 @@ fun TestDiagnosticsScreen(
                     isGood = true
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 DiagnosticRow(
                     title = "Hardware AVRCP Route",
@@ -240,7 +299,7 @@ private fun CommandPill(
 ) {
     val palette = AppTheme.palette
     val activeColor = palette.actionAccent
-    val bgColor = if (isDetected) activeColor.copy(alpha = 0.15f) else palette.cardBorder.copy(alpha = 0.4f)
+    val bgColor = if (isDetected) activeColor.copy(alpha = 0.15f) else palette.cardBorder.copy(alpha = 0.35f)
     val borderColor = if (isDetected) activeColor else palette.cardBorder
 
     Box(
@@ -314,7 +373,7 @@ private fun DiagnosticRow(
             Text(
                 text = subtitle,
                 color = palette.textMuted,
-                fontSize = 12.sp
+                fontSize = 11.sp
             )
         }
         NeonBadge(
@@ -323,4 +382,3 @@ private fun DiagnosticRow(
         )
     }
 }
-

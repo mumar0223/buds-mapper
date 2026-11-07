@@ -186,25 +186,6 @@ fun AppRootScaffold(
                 content(effectiveTop, contentBottomPadding)
             }
         }
-
-        // 3. Top "Cloudy" Borderless Fade Vignette (Overlay right under status bar)
-        val cloudyHeight = statusBarHeight + 38.dp
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(cloudyHeight)
-                .align(Alignment.TopCenter)
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            palette.backgroundColor,
-                            palette.backgroundColor.copy(alpha = 0.94f),
-                            palette.backgroundColor.copy(alpha = 0.50f),
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
     }
 }
 
