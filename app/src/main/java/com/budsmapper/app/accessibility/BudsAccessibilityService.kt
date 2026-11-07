@@ -29,7 +29,7 @@ class BudsAccessibilityService : AccessibilityService() {
         super.onCreate()
         eventStore = LastEventStore.getInstance(this)
         mediaSessionManager = BudsMediaSessionManager(this)
-        statusNotificationManager = StatusNotificationManager(this, mediaSessionManager)
+        statusNotificationManager = StatusNotificationManager(this)
 
         // Sync MediaSession lifecycle with user preference
         serviceScope.launch {
