@@ -32,21 +32,25 @@ class BudsMediaSessionManager(private val context: Context) {
     private var silentAudioTrack: AudioTrack? = null
     private var lastPulseTimestamp: Long = 0L
 
-    // Callback to detect when YouTube/Spotify starts audio so we can reclaim mediaButtonSession priority
+    // Callback to detect when another media app starts audio so we can reclaim priority
     private val audioPlaybackCallback = object : AudioManager.AudioPlaybackCallback() {
         override fun onPlaybackConfigChanged(configs: List<AudioPlaybackConfiguration>) {
             super.onPlaybackConfigChanged(configs)
             if (!isSessionActive()) return
 
+            val currentPkg = eventStore.currentForegroundPackage.value
+            val isEnabled = AppProfileStore.getInstance(context).isProfileEnabled(currentPkg)
+            if (!isEnabled) return
+
             val mediaConfigs = configs.filter { config ->
                 config.audioAttributes.usage == AudioAttributes.USAGE_MEDIA
             }
 
-            // Only pulse if another media app is active alongside our silent track, with a 3000ms cooldown
+            // Only pulse if another media app is active alongside our silent track, with a 400ms cooldown
             val now = SystemClock.uptimeMillis()
-            if (mediaConfigs.size > 1 && (now - lastPulseTimestamp) >= 3000L) {
+            if (mediaConfigs.size > 1 && (now - lastPulseTimestamp) >= 400L) {
                 lastPulseTimestamp = now
-                Log.d(TAG, "External media audio detected (${mediaConfigs.size} sessions). Pulsing silent AudioTrack.")
+                Log.d(TAG, "External media audio detected in enabled app ($currentPkg). Pulsing silent AudioTrack.")
                 pulseSilentAudio()
             }
         }
@@ -148,6 +152,17 @@ class BudsMediaSessionManager(private val context: Context) {
             Log.i(TAG, "Silent AudioTrack stopped")
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping silent AudioTrack", e)
+        }
+    }
+
+    fun reclaimPriority() {
+        if (!isSessionActive()) return
+        val currentPkg = eventStore.currentForegroundPackage.value
+        val isEnabled = AppProfileStore.getInstance(context).isProfileEnabled(currentPkg)
+        if (!isEnabled) return
+
+        mainHandler.post {
+            pulseSilentAudio()
         }
     }
 
