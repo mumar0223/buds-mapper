@@ -5,8 +5,6 @@ import android.accessibilityservice.AccessibilityServiceInfo
 import android.accessibilityservice.GestureDescription
 import android.content.pm.PackageManager
 import android.graphics.Path
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
@@ -29,7 +27,6 @@ class BudsAccessibilityService : AccessibilityService() {
     private lateinit var statusNotificationManager: StatusNotificationManager
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private val mainHandler = Handler(Looper.getMainLooper())
     private var lastRecordedPackage: String? = null
 
     override fun onCreate() {
@@ -111,7 +108,7 @@ class BudsAccessibilityService : AccessibilityService() {
      */
     fun executeAction(action: MappedAction): Boolean {
         Log.i(TAG, "executeAction requested: ${action.displayName} (${action.id})")
-        val consumed = when (action) {
+        return when (action) {
             MappedAction.SWIPE_UP -> {
                 performSwipeUp()
                 true
@@ -139,30 +136,6 @@ class BudsAccessibilityService : AccessibilityService() {
                 false // Pass-through to native media player
             }
         }
-
-        if (consumed) {
-            // Re-assert priority across the new media load lifecycle
-            // so the next earbud tap works immediately without requiring manual screen touch!
-            reclaimPriorityAfterGesture()
-        }
-
-        return consumed
-    }
-
-    private fun reclaimPriorityAfterGesture() {
-        // Staggered priority re-assertion:
-        // +350ms: As the swipe animation reaches the threshold and the new video loads
-        mainHandler.postDelayed({
-            mediaSessionManager.reclaimPriority()
-        }, 350L)
-        // +700ms: As the new video begins playing audio frames
-        mainHandler.postDelayed({
-            mediaSessionManager.reclaimPriority()
-        }, 700L)
-        // +1200ms: Guard against network buffering latency
-        mainHandler.postDelayed({
-            mediaSessionManager.reclaimPriority()
-        }, 1200L)
     }
 
     fun performSwipeUp(durationMs: Long = 200L) {
