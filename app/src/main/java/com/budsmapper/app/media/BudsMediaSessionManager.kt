@@ -306,6 +306,10 @@ class BudsMediaSessionManager(private val context: Context) {
                 }
 
                 if (keyEvent != null) {
+                    if (!eventStore.isMasterEnabled.value) {
+                        return false
+                    }
+
                     val currentPkg = eventStore.currentForegroundPackage.value
                     val currentLabel = eventStore.currentForegroundLabel.value
                     val profileStore = AppProfileStore.getInstance(context)

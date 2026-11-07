@@ -1,6 +1,8 @@
 package com.budsmapper.app.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -11,28 +13,42 @@ import com.budsmapper.app.data.LastEventStore
 import com.budsmapper.app.ui.screens.AppGestureMappingScreen
 import com.budsmapper.app.ui.screens.AppProfilesScreen
 import com.budsmapper.app.ui.screens.HomeScreen
-import com.budsmapper.app.ui.theme.BudsMapperTheme
+import com.budsmapper.app.ui.screens.SettingsScreen
+import com.budsmapper.app.ui.screens.TestDiagnosticsScreen
+import com.budsmapper.app.ui.theme.LocalThemePalette
+import com.budsmapper.app.ui.theme.ThemeStore
 
 sealed interface Screen {
     data object Home : Screen
     data object AppProfiles : Screen
     data class GestureMapping(val packageName: String, val appLabel: String) : Screen
+    data object TestDiagnostics : Screen
+    data object Settings : Screen
 }
 
 @Composable
 fun BudsMapperApp(
     eventStore: LastEventStore,
-    profileStore: AppProfileStore = AppProfileStore.getInstance(LocalContext.current)
+    profileStore: AppProfileStore = AppProfileStore.getInstance(LocalContext.current),
+    themeStore: ThemeStore = ThemeStore.getInstance(LocalContext.current)
 ) {
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
 
-    BudsMapperTheme {
+    val currentMode by themeStore.themeMode.collectAsState()
+    val currentAccent by themeStore.accentTheme.collectAsState()
+    val palette = remember(currentMode, currentAccent) {
+        themeStore.getPalette(currentMode, currentAccent)
+    }
+
+    CompositionLocalProvider(LocalThemePalette provides palette) {
         when (val screen = currentScreen) {
             is Screen.Home -> {
                 HomeScreen(
                     eventStore = eventStore,
                     profileStore = profileStore,
-                    onNavigateToProfiles = { currentScreen = Screen.AppProfiles }
+                    onNavigateToProfiles = { currentScreen = Screen.AppProfiles },
+                    onNavigateToTest = { currentScreen = Screen.TestDiagnostics },
+                    onNavigateToSettings = { currentScreen = Screen.Settings }
                 )
             }
             is Screen.AppProfiles -> {
@@ -50,6 +66,18 @@ fun BudsMapperApp(
                     appLabel = screen.appLabel,
                     profileStore = profileStore,
                     onNavigateBack = { currentScreen = Screen.AppProfiles }
+                )
+            }
+            is Screen.TestDiagnostics -> {
+                TestDiagnosticsScreen(
+                    eventStore = eventStore,
+                    onNavigateBack = { currentScreen = Screen.Home }
+                )
+            }
+            is Screen.Settings -> {
+                SettingsScreen(
+                    themeStore = themeStore,
+                    onNavigateBack = { currentScreen = Screen.Home }
                 )
             }
         }

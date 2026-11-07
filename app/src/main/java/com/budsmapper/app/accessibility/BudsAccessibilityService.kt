@@ -39,18 +39,20 @@ class BudsAccessibilityService : AccessibilityService() {
         val profileStore = AppProfileStore.getInstance(this)
 
         // Smart Auto-Engagement:
-        // Dynamically activates MediaSession capture ONLY when an application with an ENABLED profile is active.
-        // Automatically releases immediately when switching to Spotify, Home, or an unmapped app!
+        // Dynamically activates MediaSession capture ONLY when Master Switch is ON AND
+        // an application with an ENABLED profile is in the foreground.
+        // Automatically releases immediately when Master is OFF or switching to unmapped apps!
         serviceScope.launch {
             combine(
+                eventStore.isMasterEnabled,
                 eventStore.currentForegroundPackage,
                 profileStore.enabledPackages
-            ) { pkg, enabledSet ->
-                enabledSet.contains(pkg)
+            ) { isMasterEnabled, pkg, enabledSet ->
+                isMasterEnabled && enabledSet.contains(pkg)
             }.collect { isEnabledForForegroundApp ->
                 Log.i(
                     TAG,
-                    "Dynamic capture state changed: isEnabled=$isEnabledForForegroundApp for foreground pkg: ${eventStore.currentForegroundPackage.value}"
+                    "Dynamic capture state changed: isEnabled=$isEnabledForForegroundApp (master=${eventStore.isMasterEnabled.value}) for foreground pkg: ${eventStore.currentForegroundPackage.value}"
                 )
                 mediaSessionManager.setCaptureEnabled(isEnabledForForegroundApp)
                 eventStore.setMediaSessionCaptureEnabled(isEnabledForForegroundApp)
@@ -107,6 +109,10 @@ class BudsAccessibilityService : AccessibilityService() {
      * Returns true if the gesture was consumed, or false if it should pass through (e.g. DEFAULT).
      */
     fun executeAction(action: MappedAction): Boolean {
+        if (!eventStore.isMasterEnabled.value) {
+            Log.i(TAG, "Master service is disabled, ignoring action ${action.displayName}")
+            return false
+        }
         Log.i(TAG, "executeAction requested: ${action.displayName} (${action.id})")
         return when (action) {
             MappedAction.SWIPE_UP -> {

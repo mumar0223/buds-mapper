@@ -1,7 +1,6 @@
 package com.budsmapper.app.ui.screens
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,16 +18,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,7 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -51,16 +41,11 @@ import com.budsmapper.app.R
 import com.budsmapper.app.data.AppProfileStore
 import com.budsmapper.app.data.InstalledApp
 import com.budsmapper.app.data.InstalledAppsManager
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-
-private val DarkBackground = Color(0xFF0F1117)
-private val CardBackground = Color(0xFF161A24)
-private val CardBorderColor = Color(0xFF262C3D)
-private val PrimaryAccent = Color(0xFF4C8DFF)
-private val TextWhite = Color(0xFFFFFFFF)
-private val TextMuted = Color(0xFF9CA3AF)
-private val TextGreen = Color(0xFF34D399)
+import com.budsmapper.app.ui.components.AppRootScaffold
+import com.budsmapper.app.ui.components.NeonBadge
+import com.budsmapper.app.ui.components.NeonSwitch
+import com.budsmapper.app.ui.components.PolishedSearchBar
+import com.budsmapper.app.ui.theme.AppTheme
 
 @Composable
 fun AppProfilesScreen(
@@ -74,13 +59,13 @@ fun AppProfilesScreen(
     }
 
     val context = LocalContext.current
+    val palette = AppTheme.palette
     var installedApps by remember { mutableStateOf<List<InstalledApp>>(InstalledAppsManager.getCachedApps()) }
     var isLoading by remember { mutableStateOf(installedApps.isEmpty()) }
     var searchQuery by remember { mutableStateOf("") }
 
     val enabledPackages by profileStore.enabledPackages.collectAsState()
 
-    // Load or refresh launchable applications
     LaunchedEffect(Unit) {
         val apps = InstalledAppsManager.getOrRefreshApps(context, forceRefresh = true)
         installedApps = apps
@@ -98,82 +83,22 @@ fun AppProfilesScreen(
         }
     }
 
-    Surface(
-        modifier = modifier.fillMaxSize(),
-        color = DarkBackground
-    ) {
+    AppRootScaffold(
+        title = "Application Profiles",
+        subtitle = "${enabledPackages.size} active · ${installedApps.size} installed",
+        onBackClick = onNavigateBack
+    ) { topPad, bottomPad ->
         Column(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxSize()
-                .padding(horizontal = 20.dp, vertical = 24.dp)
+                .padding(horizontal = 20.dp)
+                .padding(top = topPad, bottom = bottomPad)
         ) {
-            // Header Bar
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(CardBackground)
-                        .border(1.dp, CardBorderColor, CircleShape)
-                        .clickable { onNavigateBack() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "←",
-                        color = TextWhite,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(14.dp))
-
-                Column {
-                    Text(
-                        text = "Application Profiles",
-                        color = TextWhite,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "${enabledPackages.size} active · ${installedApps.size} installed",
-                        color = TextMuted,
-                        fontSize = 12.sp
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            // Search Bar
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp)),
-                placeholder = {
-                    Text("Search installed applications...", color = TextMuted, fontSize = 14.sp)
-                },
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = CardBackground,
-                    unfocusedContainerColor = CardBackground,
-                    focusedBorderColor = PrimaryAccent,
-                    unfocusedBorderColor = CardBorderColor,
-                    focusedTextColor = TextWhite,
-                    unfocusedTextColor = TextWhite
-                ),
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { searchQuery = "" }) {
-                            Text("✕", color = TextMuted, fontSize = 14.sp)
-                        }
-                    }
-                }
+            // Polished Search Bar with proper M3 shape and search icon
+            PolishedSearchBar(
+                query = searchQuery,
+                onQueryChange = { searchQuery = it },
+                placeholder = "Search installed applications..."
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -183,7 +108,7 @@ fun AppProfilesScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = PrimaryAccent)
+                    CircularProgressIndicator(color = palette.primaryAccent)
                 }
             } else if (filteredApps.isEmpty()) {
                 Box(
@@ -194,14 +119,14 @@ fun AppProfilesScreen(
                 ) {
                     Text(
                         text = if (searchQuery.isEmpty()) "No applications found" else "No matching apps for \"$searchQuery\"",
-                        color = TextMuted,
+                        color = palette.textMuted,
                         fontSize = 14.sp
                     )
                 }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(filteredApps, key = { it.packageName }) { app ->
                         val isEnabled = enabledPackages.contains(app.packageName)
@@ -231,17 +156,18 @@ private fun AppProfileItemCard(
     onToggleEnabled: (Boolean) -> Unit,
     onClickCard: () -> Unit
 ) {
+    val palette = AppTheme.palette
     val appBitmap = app.iconBitmap
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(CardBackground)
+            .clip(RoundedCornerShape(18.dp))
+            .background(palette.cardBackground)
             .border(
                 1.dp,
-                if (isEnabled) PrimaryAccent.copy(alpha = 0.4f) else CardBorderColor,
-                RoundedCornerShape(16.dp)
+                if (isEnabled) palette.cardBorderActive else palette.cardBorder,
+                RoundedCornerShape(18.dp)
             )
             .clickable(enabled = isEnabled) {
                 onClickCard()
@@ -255,65 +181,65 @@ private fun AppProfileItemCard(
             // App Icon
             Box(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xFF202534)),
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(palette.cardBorder.copy(alpha = 0.3f)),
                 contentAlignment = Alignment.Center
             ) {
                 if (appBitmap != null) {
                     Image(
                         bitmap = appBitmap,
                         contentDescription = app.label,
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(42.dp)
                     )
                 } else {
-                    Icon(
+                    Image(
                         painter = painterResource(id = R.drawable.ic_buds_mapper),
-                        contentDescription = null,
-                        tint = PrimaryAccent,
-                        modifier = Modifier.size(24.dp)
+                        contentDescription = app.label,
+                        modifier = Modifier.size(36.dp)
                     )
                 }
             }
 
             Spacer(modifier = Modifier.width(14.dp))
 
-            // App Label + Status
+            // App Label & Package
             Column(
                 modifier = Modifier
                     .weight(1f)
                     .alpha(if (isEnabled) 1.0f else 0.6f)
             ) {
-                Text(
-                    text = app.label,
-                    color = TextWhite,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1
-                )
-
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = app.label,
+                        color = palette.textPrimary,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    if (isEnabled) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        NeonBadge(
+                            text = "CUSTOM",
+                            color = palette.statusAccent
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(2.dp))
-
                 Text(
-                    text = if (isEnabled) "Profile enabled · Tap to configure" else "Profile disabled",
-                    color = if (isEnabled) TextGreen else TextMuted,
+                    text = if (isEnabled) "Tap card to remap gestures →" else app.packageName,
+                    color = if (isEnabled) palette.primaryAccent else palette.textMuted,
                     fontSize = 11.sp,
-                    fontWeight = if (isEnabled) FontWeight.Medium else FontWeight.Normal
+                    fontWeight = if (isEnabled) FontWeight.SemiBold else FontWeight.Normal
                 )
             }
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Independent Switch (Tapping switch DOES NOT trigger card click)
-            Switch(
+            // Neon Switch Toggle
+            NeonSwitch(
                 checked = isEnabled,
-                onCheckedChange = { onToggleEnabled(it) },
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
-                    checkedTrackColor = PrimaryAccent,
-                    uncheckedThumbColor = Color(0xFF6B7280),
-                    uncheckedTrackColor = Color(0xFF262C3D)
-                )
+                onCheckedChange = onToggleEnabled,
+                accentColor = palette.statusAccent
             )
         }
     }

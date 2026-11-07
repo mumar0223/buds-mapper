@@ -6,7 +6,6 @@ import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,21 +22,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -66,18 +57,15 @@ import com.budsmapper.app.data.AppProfileStore
 import com.budsmapper.app.data.BudsMediaCommand
 import com.budsmapper.app.data.InstalledAppsManager
 import com.budsmapper.app.data.MappedAction
+import com.budsmapper.app.ui.components.AppRootScaffold
+import com.budsmapper.app.ui.components.GameSpaceCard
+import com.budsmapper.app.ui.components.NeonBadge
+import com.budsmapper.app.ui.components.NeonOutlinedButton
+import com.budsmapper.app.ui.components.NeonSwitch
+import com.budsmapper.app.ui.theme.AppTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-private val DarkBackground = Color(0xFF0F1117)
-private val CardBackground = Color(0xFF161A24)
-private val CardBorderColor = Color(0xFF262C3D)
-private val PrimaryAccent = Color(0xFF4C8DFF)
-private val TextWhite = Color(0xFFFFFFFF)
-private val TextMuted = Color(0xFF9CA3AF)
-private val TextGreen = Color(0xFF34D399)
-private val BadgeBg = Color(0xFF1F2937)
 
 data class CommandGestureInfo(
     val command: BudsMediaCommand,
@@ -106,6 +94,7 @@ fun AppGestureMappingScreen(
     }
 
     val context = LocalContext.current
+    val palette = AppTheme.palette
     val enabledPackages by profileStore.enabledPackages.collectAsState()
     val isEnabled = enabledPackages.contains(packageName)
     val mappingVersion by profileStore.mappingVersion.collectAsState()
@@ -118,7 +107,6 @@ fun AppGestureMappingScreen(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val coroutineScope = rememberCoroutineScope()
 
-    // Fallback: Resolve app icon on background thread only if not in cache
     LaunchedEffect(packageName) {
         if (appIconBitmap == null) {
             withContext(Dispatchers.IO) {
@@ -130,144 +118,92 @@ fun AppGestureMappingScreen(
         }
     }
 
-    Surface(
-        modifier = modifier.fillMaxSize(),
-        color = DarkBackground
-    ) {
+    AppRootScaffold(
+        title = appLabel,
+        subtitle = packageName,
+        onBackClick = onNavigateBack,
+        actions = {
+            NeonSwitch(
+                checked = isEnabled,
+                onCheckedChange = { profileStore.setProfileEnabled(packageName, it) },
+                accentColor = palette.statusAccent
+            )
+        }
+    ) { topPad, bottomPad ->
         Column(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
+                .padding(horizontal = 20.dp)
+                .padding(top = topPad, bottom = bottomPad),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Top Navigation & App Header Card
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(CardBackground)
-                        .border(1.dp, CardBorderColor, CircleShape)
-                        .clickable { onNavigateBack() },
-                    contentAlignment = Alignment.Center
+            // App Header Card
+            GameSpaceCard {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "←",
-                        color = TextWhite,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(palette.cardBorder.copy(alpha = 0.3f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (appIconBitmap != null) {
+                            Image(
+                                bitmap = appIconBitmap!!,
+                                contentDescription = appLabel,
+                                modifier = Modifier.size(38.dp)
+                            )
+                        } else {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_buds_mapper),
+                                contentDescription = null,
+                                tint = palette.primaryAccent,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
 
-                Spacer(modifier = Modifier.width(14.dp))
+                    Spacer(modifier = Modifier.width(14.dp))
 
-                // App Icon
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFF202534)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (appIconBitmap != null) {
-                        Image(
-                            bitmap = appIconBitmap!!,
-                            contentDescription = appLabel,
-                            modifier = Modifier.size(36.dp)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (isEnabled) "Gesture Mapping Active" else "Profile Inactive",
+                            color = if (isEnabled) palette.statusAccent else palette.textMuted,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
                         )
-                    } else {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_buds_mapper),
-                            contentDescription = null,
-                            tint = PrimaryAccent,
-                            modifier = Modifier.size(24.dp)
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = if (isEnabled) "Taps on your Galaxy Buds Core trigger mapped actions below."
+                            else "Turn on the toggle switch at the top to enable gestures for this app.",
+                            color = palette.textSecondary,
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp
                         )
                     }
                 }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = appLabel,
-                        color = TextWhite,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1
-                    )
-                    Text(
-                        text = packageName,
-                        color = TextMuted,
-                        fontSize = 11.sp,
-                        fontFamily = FontFamily.Monospace,
-                        maxLines = 1
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // Profile Switch
-                Switch(
-                    checked = isEnabled,
-                    onCheckedChange = { profileStore.setProfileEnabled(packageName, it) },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
-                        checkedTrackColor = PrimaryAccent,
-                        uncheckedThumbColor = Color(0xFF6B7280),
-                        uncheckedTrackColor = Color(0xFF262C3D)
-                    )
-                )
-            }
-
-            // Subheader Banner
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(CardBackground)
-                    .border(1.dp, CardBorderColor, RoundedCornerShape(12.dp))
-                    .padding(14.dp)
-            ) {
-                Text(
-                    text = "$appLabel Gesture Mapping",
-                    color = TextWhite,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = if (isEnabled) {
-                        "Configure what your Galaxy Buds Core taps trigger inside $appLabel."
-                    } else {
-                        "Profile is currently disabled. Toggle the switch above to activate custom earbud gestures."
-                    },
-                    color = if (isEnabled) TextMuted else Color(0xFFF59E0B),
-                    fontSize = 12.sp,
-                    lineHeight = 17.sp
-                )
             }
 
             Text(
                 text = "GESTURE ASSIGNMENTS",
-                color = TextMuted,
+                color = palette.textMuted,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
             )
 
-            // Gesture Cards
+            // Gesture Cards List
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .alpha(if (isEnabled) 1.0f else 0.5f),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 SUPPORTED_GESTURES.forEach { gestureInfo ->
-                    // Re-read mapping whenever mappingVersion changes
                     val currentAction = remember(mappingVersion, gestureInfo.command) {
                         profileStore.getMapping(packageName, gestureInfo.command)
                     }
@@ -285,8 +221,6 @@ fun AppGestureMappingScreen(
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 
@@ -297,8 +231,8 @@ fun AppGestureMappingScreen(
         ModalBottomSheet(
             onDismissRequest = { selectedCommandForEdit = null },
             sheetState = sheetState,
-            containerColor = CardBackground,
-            contentColor = TextWhite
+            containerColor = palette.cardBackground,
+            contentColor = palette.textPrimary
         ) {
             ActionSelectionSheetContent(
                 gestureLabel = gestureInfo.gestureLabel,
@@ -330,108 +264,83 @@ private fun GestureCard(
     isAppEnabled: Boolean,
     onEditClick: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = isAppEnabled) { onEditClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorderColor)
+    val palette = AppTheme.palette
+    val isConfigured = action != MappedAction.DEFAULT
+
+    GameSpaceCard(
+        isActive = isConfigured,
+        onClick = if (isAppEnabled) onEditClick else null
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Top Row: Gesture Name & Command Badge
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = gestureLabel,
-                        color = TextWhite,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(BadgeBg)
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = command.key,
-                            color = PrimaryAccent,
-                            fontSize = 10.sp,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (action != MappedAction.DEFAULT) Color(0xFF064E3B) else BadgeBg)
-                        .padding(horizontal = 7.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = if (action != MappedAction.DEFAULT) "Configured" else "Default",
-                        color = if (action != MappedAction.DEFAULT) TextGreen else TextMuted,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
-
-            // Assigned Action Display
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xFF1B202D))
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
+                    text = gestureLabel,
+                    color = palette.textPrimary,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                NeonBadge(
+                    text = command.key,
+                    color = palette.primaryAccent
+                )
+            }
+
+            NeonBadge(
+                text = if (isConfigured) "CONFIGURED" else "DEFAULT",
+                color = if (isConfigured) palette.actionAccent else palette.textMuted
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Assigned Action Box
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(palette.cardBorder.copy(alpha = 0.35f))
+                .padding(horizontal = 14.dp, vertical = 10.dp)
+        ) {
+            Column {
+                Text(
                     text = "Assigned action",
-                    color = TextMuted,
+                    color = palette.textMuted,
                     fontSize = 10.sp
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = action.displayName,
-                    color = if (action == MappedAction.NONE) TextMuted else Color.White,
+                    color = if (action == MappedAction.NONE) palette.textMuted else palette.textPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = action.description,
-                    color = TextMuted,
+                    color = palette.textSecondary,
                     fontSize = 11.sp
                 )
             }
+        }
 
-            // Action row: Edit Mapping Link
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Edit mapping →",
-                    color = PrimaryAccent,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            Text(
+                text = "Edit mapping →",
+                color = palette.primaryAccent,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
         }
     }
 }
@@ -444,6 +353,7 @@ private fun ActionSelectionSheetContent(
     onActionSelected: (MappedAction) -> Unit,
     onCancel: () -> Unit
 ) {
+    val palette = AppTheme.palette
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -453,13 +363,13 @@ private fun ActionSelectionSheetContent(
         Column {
             Text(
                 text = "Map $gestureLabel",
-                color = TextWhite,
+                color = palette.textPrimary,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
                 text = "Bluetooth Command: ${command.key} (${command.description})",
-                color = TextMuted,
+                color = palette.textSecondary,
                 fontSize = 12.sp
             )
         }
@@ -472,16 +382,15 @@ private fun ActionSelectionSheetContent(
         ) {
             MappedAction.entries.forEach { action ->
                 val isSelected = action == currentAction
+                val borderColor = if (isSelected) palette.primaryAccent else palette.cardBorder
+                val bgColor = if (isSelected) palette.primaryAccent.copy(alpha = 0.10f) else Color.Transparent
+
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (isSelected) Color(0xFF1E283E) else Color(0xFF1A1E29))
-                        .border(
-                            1.dp,
-                            if (isSelected) PrimaryAccent else Color.Transparent,
-                            RoundedCornerShape(12.dp)
-                        )
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(bgColor)
+                        .border(if (isSelected) 1.5.dp else 1.dp, borderColor, RoundedCornerShape(14.dp))
                         .clickable { onActionSelected(action) }
                         .padding(horizontal = 14.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -490,21 +399,21 @@ private fun ActionSelectionSheetContent(
                         selected = isSelected,
                         onClick = { onActionSelected(action) },
                         colors = RadioButtonDefaults.colors(
-                            selectedColor = PrimaryAccent,
-                            unselectedColor = TextMuted
+                            selectedColor = palette.primaryAccent,
+                            unselectedColor = palette.textMuted
                         )
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = action.displayName,
-                            color = TextWhite,
+                            color = palette.textPrimary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
                             text = action.description,
-                            color = TextMuted,
+                            color = palette.textMuted,
                             fontSize = 11.sp
                         )
                     }
@@ -512,19 +421,14 @@ private fun ActionSelectionSheetContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        Button(
+        NeonOutlinedButton(
+            text = "Cancel",
             onClick = onCancel,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF262C3D),
-                contentColor = TextWhite
-            )
-        ) {
-            Text(text = "Cancel")
-        }
+            accentColor = palette.textMuted,
+            trailingText = null
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
     }

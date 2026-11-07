@@ -40,6 +40,11 @@ class LastEventStore(context: Context) {
     private val _detectionStateFlow = MutableStateFlow(loadDetectionState())
     val detectionStateFlow: StateFlow<CommandDetectionState> = _detectionStateFlow.asStateFlow()
 
+    private val _isMasterEnabled = MutableStateFlow(
+        prefs.getBoolean(KEY_MASTER_SERVICE_ENABLED, true)
+    )
+    val isMasterEnabled: StateFlow<Boolean> = _isMasterEnabled.asStateFlow()
+
     private val _mediaSessionCaptureEnabled = MutableStateFlow(
         prefs.getBoolean(KEY_MEDIA_SESSION_CAPTURE_ENABLED, true)
     )
@@ -67,6 +72,9 @@ class LastEventStore(context: Context) {
 
     private val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         when (key) {
+            KEY_MASTER_SERVICE_ENABLED -> {
+                _isMasterEnabled.value = prefs.getBoolean(KEY_MASTER_SERVICE_ENABLED, true)
+            }
             KEY_MEDIA_SESSION_CAPTURE_ENABLED -> {
                 _mediaSessionCaptureEnabled.value = prefs.getBoolean(KEY_MEDIA_SESSION_CAPTURE_ENABLED, true)
             }
@@ -94,6 +102,15 @@ class LastEventStore(context: Context) {
 
     init {
         prefs.registerOnSharedPreferenceChangeListener(listener)
+    }
+
+    fun setMasterEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_MASTER_SERVICE_ENABLED, enabled).apply()
+        _isMasterEnabled.value = enabled
+    }
+
+    fun isMasterEnabled(): Boolean {
+        return prefs.getBoolean(KEY_MASTER_SERVICE_ENABLED, true)
     }
 
     fun setMediaSessionCaptureEnabled(enabled: Boolean) {
@@ -200,6 +217,24 @@ class LastEventStore(context: Context) {
         _currentForegroundLabel.value = prefs.getString(KEY_FOREGROUND_LABEL, "Buds Mapper") ?: "Buds Mapper"
     }
 
+    fun clearHistory() {
+        prefs.edit()
+            .remove(KEY_CODE)
+            .remove(KEY_NAME)
+            .remove(KEY_ACTION)
+            .remove(KEY_TIMESTAMP)
+            .remove(KEY_DEVICE_ID)
+            .remove(KEY_SOURCE)
+            .remove(KEY_MAPPED_ACTION)
+            .remove(KEY_CMD_PLAY_DETECTED)
+            .remove(KEY_CMD_PAUSE_DETECTED)
+            .remove(KEY_CMD_NEXT_DETECTED)
+            .remove(KEY_CMD_PREV_DETECTED)
+            .apply()
+        _lastEventFlow.value = null
+        _detectionStateFlow.value = CommandDetectionState()
+    }
+
     private fun loadLastEvent(): RecordedKeyEvent? {
         if (!prefs.contains(KEY_CODE)) return null
         return RecordedKeyEvent(
@@ -235,6 +270,7 @@ class LastEventStore(context: Context) {
         private const val KEY_DEVICE_ID = "last_device_id"
         private const val KEY_SOURCE = "last_source"
         private const val KEY_MAPPED_ACTION = "last_mapped_action"
+        private const val KEY_MASTER_SERVICE_ENABLED = "master_service_enabled"
         private const val KEY_MEDIA_SESSION_CAPTURE_ENABLED = "media_session_capture_enabled"
         private const val KEY_STATUS_NOTIFICATION_ENABLED = "status_notification_enabled"
         private const val KEY_FOREGROUND_PACKAGE = "foreground_package"

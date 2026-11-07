@@ -3,6 +3,7 @@ package com.budsmapper.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import com.budsmapper.app.data.LastEventStore
 import com.budsmapper.app.ui.BudsMapperApp
 
@@ -11,6 +12,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var eventStore: LastEventStore
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         eventStore = LastEventStore.getInstance(applicationContext)
 
@@ -25,4 +27,3 @@ class MainActivity : ComponentActivity() {
         eventStore.reload()
     }
 }
-
