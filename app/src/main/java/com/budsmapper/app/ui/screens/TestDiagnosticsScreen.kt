@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -25,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -96,7 +98,7 @@ fun TestDiagnosticsScreen(
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
+                        Spacer(modifier = Modifier.height(5.dp))
                         Text(
                             text = if (isTestCaptureForced)
                                 "Active · Tap earbuds now to test capture"
@@ -134,6 +136,7 @@ fun TestDiagnosticsScreen(
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
+                        Spacer(modifier = Modifier.height(5.dp))
                         Text(
                             text = "Real-time earbud AVRCP taps",
                             color = palette.textSecondary,
@@ -209,7 +212,7 @@ fun TestDiagnosticsScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 if (lastEvent != null) {
                     val event = lastEvent!!
@@ -254,6 +257,7 @@ fun TestDiagnosticsScreen(
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
+                Spacer(modifier = Modifier.height(5.dp))
                 Text(
                     text = "Background service communication health",
                     color = palette.textSecondary,
@@ -330,20 +334,25 @@ private fun EventDetailRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+            .padding(vertical = 5.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top
     ) {
         Text(
             text = label,
             color = palette.textSecondary,
-            fontSize = 13.sp
+            fontSize = 13.sp,
+            modifier = Modifier.width(115.dp)
         )
+        Spacer(modifier = Modifier.width(10.dp))
         Text(
             text = value,
             color = if (isHighlighted) palette.actionAccent else palette.textPrimary,
             fontSize = 13.sp,
             fontWeight = if (isHighlighted) FontWeight.Bold else FontWeight.Medium,
-            fontFamily = FontFamily.Monospace
+            fontFamily = FontFamily.Monospace,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f)
         )
     }
 }
@@ -370,6 +379,7 @@ private fun DiagnosticRow(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = subtitle,
                 color = palette.textMuted,

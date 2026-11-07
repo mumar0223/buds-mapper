@@ -6,8 +6,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,7 +39,6 @@ import com.budsmapper.app.ui.components.FlameIcon
 import com.budsmapper.app.ui.components.GameSpaceCard
 import com.budsmapper.app.ui.components.LeafIcon
 import com.budsmapper.app.ui.components.MoonIcon
-import com.budsmapper.app.ui.components.NeonBadge
 import com.budsmapper.app.ui.components.SunIcon
 import com.budsmapper.app.ui.components.ZapIcon
 import com.budsmapper.app.ui.theme.AccentTheme
@@ -68,7 +69,7 @@ fun SettingsScreen(
                 .padding(horizontal = 20.dp)
                 .padding(top = topPad, bottom = bottomPad)
         ) {
-            // Card 1: Theme Mode (Dark vs Light - Zero Emojis)
+            // Card 1: Theme Mode (Dark vs Light - 50/50 Equal Height & Width Grid)
             GameSpaceCard {
                 Text(
                     text = "Theme Appearance",
@@ -76,6 +77,7 @@ fun SettingsScreen(
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold
                 )
+                Spacer(modifier = Modifier.height(5.dp))
                 Text(
                     text = "Switch between dark slate and bright porcelain themes",
                     color = palette.textSecondary,
@@ -85,7 +87,9 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Min),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     ThemeModeSelector(
@@ -94,7 +98,9 @@ fun SettingsScreen(
                         isSelected = currentMode == ThemeMode.DARK,
                         icon = { MoonIcon(color = if (currentMode == ThemeMode.DARK) palette.primaryAccent else palette.textMuted) },
                         onClick = { themeStore.setThemeMode(ThemeMode.DARK) },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
                     )
                     ThemeModeSelector(
                         title = "Light Mode",
@@ -102,36 +108,29 @@ fun SettingsScreen(
                         isSelected = currentMode == ThemeMode.LIGHT,
                         icon = { SunIcon(color = if (currentMode == ThemeMode.LIGHT) palette.primaryAccent else palette.textMuted) },
                         onClick = { themeStore.setThemeMode(ThemeMode.LIGHT) },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Card 2: Accent Color Palette (Fusion, Blue, Red, Mint - Zero Emojis)
+            // Card 2: Accent Color Palette (Fusion, Blue, Red, Mint - Redundant badge removed)
             GameSpaceCard {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "Color Accent",
-                            color = palette.textPrimary,
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Ambient aura, buttons & indicator styling",
-                            color = palette.textSecondary,
-                            fontSize = 12.sp
-                        )
-                    }
-                    NeonBadge(
-                        text = currentAccent.displayName,
-                        color = palette.primaryAccent
+                Column {
+                    Text(
+                        text = "Color Accent",
+                        color = palette.textPrimary,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(5.dp))
+                    Text(
+                        text = "Ambient aura, buttons & indicator styling",
+                        color = palette.textSecondary,
+                        fontSize = 12.sp
                     )
                 }
 
@@ -187,6 +186,7 @@ fun SettingsScreen(
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
+                Spacer(modifier = Modifier.height(5.dp))
                 Text(
                     text = "Version 1.2.0 · Zero-Timer Dual Track Engine",
                     color = palette.textSecondary,
@@ -228,7 +228,11 @@ private fun ThemeModeSelector(
             .padding(14.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = Modifier.fillMaxHeight(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
             icon()
             Spacer(modifier = Modifier.height(6.dp))
             Text(
@@ -237,11 +241,12 @@ private fun ThemeModeSelector(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(3.dp))
             Text(
                 text = description,
                 color = palette.textMuted,
-                fontSize = 11.sp
+                fontSize = 11.sp,
+                lineHeight = 14.sp
             )
         }
     }
@@ -289,6 +294,7 @@ private fun AccentRow(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold
             )
+            Spacer(modifier = Modifier.height(3.dp))
             Text(
                 text = description,
                 color = palette.textMuted,

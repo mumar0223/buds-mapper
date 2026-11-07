@@ -42,7 +42,6 @@ import com.budsmapper.app.data.AppProfileStore
 import com.budsmapper.app.data.InstalledApp
 import com.budsmapper.app.data.InstalledAppsManager
 import com.budsmapper.app.ui.components.AppRootScaffold
-import com.budsmapper.app.ui.components.NeonBadge
 import com.budsmapper.app.ui.components.NeonSwitch
 import com.budsmapper.app.ui.components.PolishedSearchBar
 import com.budsmapper.app.ui.theme.AppTheme
@@ -209,22 +208,13 @@ private fun AppProfileItemCard(
                     .weight(1f)
                     .alpha(if (isEnabled) 1.0f else 0.6f)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = app.label,
-                        color = palette.textPrimary,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    if (isEnabled) {
-                        Spacer(modifier = Modifier.width(6.dp))
-                        NeonBadge(
-                            text = "CUSTOM",
-                            color = palette.statusAccent
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = app.label,
+                    color = palette.textPrimary,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = if (isEnabled) "Tap card to remap gestures →" else app.packageName,
                     color = if (isEnabled) palette.primaryAccent else palette.textMuted,

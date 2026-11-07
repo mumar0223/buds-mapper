@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
@@ -134,7 +135,7 @@ fun HomeScreen(
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
+                        Spacer(modifier = Modifier.height(5.dp))
                         Text(
                             text = if (isMasterEnabled) "Active · Remapping earbud taps" else "Stopped · All background capture off",
                             color = if (isMasterEnabled) palette.statusAccent else palette.textMuted,
@@ -165,7 +166,7 @@ fun HomeScreen(
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(5.dp))
                     Text(
                         text = "Buds Mapper needs accessibility permission to simulate swipe gestures on screen when you tap your earbuds.",
                         color = palette.textSecondary,
@@ -196,7 +197,7 @@ fun HomeScreen(
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
+                        Spacer(modifier = Modifier.height(5.dp))
                         Text(
                             text = "${enabledProfiles.size} custom profiles enabled",
                             color = if (isMasterEnabled) palette.statusAccent else palette.textMuted,
@@ -244,7 +245,7 @@ fun HomeScreen(
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
+                        Spacer(modifier = Modifier.height(5.dp))
                         Text(
                             text = if (statusNotificationEnabled) "Active · Displays foreground app" else "Disabled",
                             color = if (statusNotificationEnabled) palette.statusAccent else palette.textMuted,
@@ -283,28 +284,24 @@ fun HomeScreen(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Current Foreground App",
-                            color = palette.textSecondary,
-                            fontSize = 12.sp
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = currentForegroundLabel,
-                            color = palette.primaryAccent,
+                            text = "Foreground Application",
+                            color = palette.textPrimary,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold
                         )
+                        Spacer(modifier = Modifier.height(5.dp))
                         Text(
                             text = currentForegroundPackage,
                             color = palette.textMuted,
-                            fontSize = 11.sp
+                            fontSize = 12.sp
                         )
                     }
 
-                    val isForegroundProfileEnabled = enabledProfiles.contains(currentForegroundPackage)
+                    Spacer(modifier = Modifier.width(12.dp))
+
                     NeonBadge(
-                        text = if (isForegroundProfileEnabled) "MAPPED" else "PASSTHROUGH",
-                        color = if (isForegroundProfileEnabled) palette.actionAccent else palette.textMuted
+                        text = currentForegroundLabel,
+                        color = palette.primaryAccent
                     )
                 }
             }
@@ -332,7 +329,7 @@ fun HomeScreen(
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(5.dp))
                     Text(
                         text = "Live AVRCP & logs",
                         color = palette.textSecondary,
@@ -363,7 +360,7 @@ fun HomeScreen(
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(5.dp))
                     Text(
                         text = "Themes & tuning",
                         color = palette.textSecondary,

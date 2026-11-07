@@ -176,7 +176,7 @@ fun AppGestureMappingScreen(
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
+                        Spacer(modifier = Modifier.height(5.dp))
                         Text(
                             text = if (isEnabled) "Taps on your Galaxy Buds Core trigger mapped actions below."
                             else "Turn on the toggle switch at the top to enable gestures for this app.",
@@ -231,7 +231,7 @@ fun AppGestureMappingScreen(
         ModalBottomSheet(
             onDismissRequest = { selectedCommandForEdit = null },
             sheetState = sheetState,
-            containerColor = palette.cardBackground,
+            containerColor = if (palette.isDark) Color(0xFF131826) else Color(0xFFFFFFFF),
             contentColor = palette.textPrimary
         ) {
             ActionSelectionSheetContent(
@@ -367,6 +367,7 @@ private fun ActionSelectionSheetContent(
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
+            Spacer(modifier = Modifier.height(5.dp))
             Text(
                 text = "Bluetooth Command: ${command.key} (${command.description})",
                 color = palette.textSecondary,
@@ -411,6 +412,7 @@ private fun ActionSelectionSheetContent(
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold
                         )
+                        Spacer(modifier = Modifier.height(3.dp))
                         Text(
                             text = action.description,
                             color = palette.textMuted,
