@@ -12,6 +12,7 @@ import android.media.session.PlaybackState
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
 import com.budsmapper.app.data.LastEventStore
@@ -24,6 +25,7 @@ class BudsMediaSessionManager(private val context: Context) {
 
     private var mediaSession: MediaSession? = null
     private var silentAudioTrack: AudioTrack? = null
+    private var lastPulseTimestamp: Long = 0L
 
     // Callback to detect when YouTube/Spotify starts audio so we can reclaim mediaButtonSession priority
     private val audioPlaybackCallback = object : AudioManager.AudioPlaybackCallback() {
@@ -31,12 +33,15 @@ class BudsMediaSessionManager(private val context: Context) {
             super.onPlaybackConfigChanged(configs)
             if (!isSessionActive()) return
 
-            val hasExternalMedia = configs.any { config ->
+            val mediaConfigs = configs.filter { config ->
                 config.audioAttributes.usage == AudioAttributes.USAGE_MEDIA
             }
 
-            if (hasExternalMedia) {
-                Log.d(TAG, "Media audio playback configuration detected. Pulsing silent AudioTrack to retain priority.")
+            // Only pulse if another media app is active alongside our silent track, with a 3000ms cooldown
+            val now = SystemClock.uptimeMillis()
+            if (mediaConfigs.size > 1 && (now - lastPulseTimestamp) >= 3000L) {
+                lastPulseTimestamp = now
+                Log.d(TAG, "External media audio detected (${mediaConfigs.size} sessions). Pulsing silent AudioTrack.")
                 pulseSilentAudio()
             }
         }

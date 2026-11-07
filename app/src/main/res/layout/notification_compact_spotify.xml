@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="64dp"
+    android:background="#121216">
+
+    <!-- Spotify-style Full-bleed Background Image -->
+    <ImageView
+        android:id="@+id/notification_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop" />
+
+    <!-- Dark Gradient Scrim Overlay (MUST be ImageView, NEVER <View>, for RemoteViews inflation) -->
+    <ImageView
+        android:id="@+id/notification_scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#990C0E14" />
+
+    <!-- Content Row (Strictly compact ~64dp height matching One UI Screenshot Notification) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingEnd="14dp">
+
+        <!-- Active App Icon / Badge -->
+        <ImageView
+            android:id="@+id/notification_app_icon"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:scaleType="fitCenter" />
+
+        <!-- Text Details Column -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="6dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/notification_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Buds Mapper"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/notification_subtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Ready"
+                android:textColor="#E4E4EC"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- Right Side Badge / Earbud Indicator -->
+        <TextView
+            android:id="@+id/notification_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_active_badge"
+            android:paddingStart="8dp"
+            android:paddingTop="4dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="4dp"
+            android:text="ACTIVE"
+            android:textColor="#64B5F6"
+            android:textSize="10sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+</FrameLayout>

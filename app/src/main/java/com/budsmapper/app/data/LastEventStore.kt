@@ -40,19 +40,32 @@ class LastEventStore(context: Context) {
     val detectionStateFlow: StateFlow<CommandDetectionState> = _detectionStateFlow.asStateFlow()
 
     private val _mediaSessionCaptureEnabled = MutableStateFlow(
-        prefs.getBoolean(KEY_MEDIA_SESSION_CAPTURE_ENABLED, false)
+        prefs.getBoolean(KEY_MEDIA_SESSION_CAPTURE_ENABLED, true)
     )
     val mediaSessionCaptureEnabled: StateFlow<Boolean> = _mediaSessionCaptureEnabled.asStateFlow()
+
+    private val _statusNotificationEnabled = MutableStateFlow(
+        prefs.getBoolean(KEY_STATUS_NOTIFICATION_ENABLED, true)
+    )
+    val statusNotificationEnabled: StateFlow<Boolean> = _statusNotificationEnabled.asStateFlow()
 
     private val _currentForegroundPackage = MutableStateFlow(
         prefs.getString(KEY_FOREGROUND_PACKAGE, "com.budsmapper.app") ?: "com.budsmapper.app"
     )
     val currentForegroundPackage: StateFlow<String> = _currentForegroundPackage.asStateFlow()
 
+    private val _currentForegroundLabel = MutableStateFlow(
+        prefs.getString(KEY_FOREGROUND_LABEL, "Buds Mapper") ?: "Buds Mapper"
+    )
+    val currentForegroundLabel: StateFlow<String> = _currentForegroundLabel.asStateFlow()
+
     private val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         when (key) {
             KEY_MEDIA_SESSION_CAPTURE_ENABLED -> {
-                _mediaSessionCaptureEnabled.value = prefs.getBoolean(KEY_MEDIA_SESSION_CAPTURE_ENABLED, false)
+                _mediaSessionCaptureEnabled.value = prefs.getBoolean(KEY_MEDIA_SESSION_CAPTURE_ENABLED, true)
+            }
+            KEY_STATUS_NOTIFICATION_ENABLED -> {
+                _statusNotificationEnabled.value = prefs.getBoolean(KEY_STATUS_NOTIFICATION_ENABLED, true)
             }
             KEY_CODE, KEY_SOURCE, KEY_TIMESTAMP -> {
                 _lastEventFlow.value = loadLastEvent()
@@ -63,6 +76,9 @@ class LastEventStore(context: Context) {
             }
             KEY_FOREGROUND_PACKAGE -> {
                 _currentForegroundPackage.value = prefs.getString(KEY_FOREGROUND_PACKAGE, "com.budsmapper.app") ?: "com.budsmapper.app"
+            }
+            KEY_FOREGROUND_LABEL -> {
+                _currentForegroundLabel.value = prefs.getString(KEY_FOREGROUND_LABEL, "Buds Mapper") ?: "Buds Mapper"
             }
         }
     }
@@ -77,12 +93,25 @@ class LastEventStore(context: Context) {
     }
 
     fun isMediaSessionCaptureEnabled(): Boolean {
-        return prefs.getBoolean(KEY_MEDIA_SESSION_CAPTURE_ENABLED, false)
+        return prefs.getBoolean(KEY_MEDIA_SESSION_CAPTURE_ENABLED, true)
     }
 
-    fun setCurrentForegroundPackage(pkg: String) {
-        prefs.edit().putString(KEY_FOREGROUND_PACKAGE, pkg).apply()
+    fun setStatusNotificationEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_STATUS_NOTIFICATION_ENABLED, enabled).apply()
+        _statusNotificationEnabled.value = enabled
+    }
+
+    fun isStatusNotificationEnabled(): Boolean {
+        return prefs.getBoolean(KEY_STATUS_NOTIFICATION_ENABLED, true)
+    }
+
+    fun setCurrentForegroundPackage(pkg: String, label: String = pkg) {
+        prefs.edit()
+            .putString(KEY_FOREGROUND_PACKAGE, pkg)
+            .putString(KEY_FOREGROUND_LABEL, label)
+            .apply()
         _currentForegroundPackage.value = pkg
+        _currentForegroundLabel.value = label
     }
 
     fun saveEvent(event: KeyEvent, source: String = "AccessibilityService") {
@@ -134,8 +163,10 @@ class LastEventStore(context: Context) {
     fun reload() {
         _lastEventFlow.value = loadLastEvent()
         _detectionStateFlow.value = loadDetectionState()
-        _mediaSessionCaptureEnabled.value = prefs.getBoolean(KEY_MEDIA_SESSION_CAPTURE_ENABLED, false)
+        _mediaSessionCaptureEnabled.value = prefs.getBoolean(KEY_MEDIA_SESSION_CAPTURE_ENABLED, true)
+        _statusNotificationEnabled.value = prefs.getBoolean(KEY_STATUS_NOTIFICATION_ENABLED, true)
         _currentForegroundPackage.value = prefs.getString(KEY_FOREGROUND_PACKAGE, "com.budsmapper.app") ?: "com.budsmapper.app"
+        _currentForegroundLabel.value = prefs.getString(KEY_FOREGROUND_LABEL, "Buds Mapper") ?: "Buds Mapper"
     }
 
     private fun loadLastEvent(): RecordedKeyEvent? {
@@ -172,7 +203,9 @@ class LastEventStore(context: Context) {
         private const val KEY_DEVICE_ID = "last_device_id"
         private const val KEY_SOURCE = "last_source"
         private const val KEY_MEDIA_SESSION_CAPTURE_ENABLED = "media_session_capture_enabled"
+        private const val KEY_STATUS_NOTIFICATION_ENABLED = "status_notification_enabled"
         private const val KEY_FOREGROUND_PACKAGE = "foreground_package"
+        private const val KEY_FOREGROUND_LABEL = "foreground_label"
 
         private const val KEY_CMD_PLAY_DETECTED = "cmd_play_detected"
         private const val KEY_CMD_PLAY_TIME = "cmd_play_time"
