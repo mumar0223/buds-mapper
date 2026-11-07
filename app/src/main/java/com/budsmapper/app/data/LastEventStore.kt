@@ -59,6 +59,11 @@ class LastEventStore(context: Context) {
     )
     val currentForegroundLabel: StateFlow<String> = _currentForegroundLabel.asStateFlow()
 
+    private val _currentMode = MutableStateFlow(
+        prefs.getString(KEY_CURRENT_MODE, "Auto Mode") ?: "Auto Mode"
+    )
+    val currentMode: StateFlow<String> = _currentMode.asStateFlow()
+
     private val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         when (key) {
             KEY_MEDIA_SESSION_CAPTURE_ENABLED -> {
@@ -79,6 +84,9 @@ class LastEventStore(context: Context) {
             }
             KEY_FOREGROUND_LABEL -> {
                 _currentForegroundLabel.value = prefs.getString(KEY_FOREGROUND_LABEL, "Buds Mapper") ?: "Buds Mapper"
+            }
+            KEY_CURRENT_MODE -> {
+                _currentMode.value = prefs.getString(KEY_CURRENT_MODE, "Auto Mode") ?: "Auto Mode"
             }
         }
     }
@@ -112,6 +120,18 @@ class LastEventStore(context: Context) {
             .apply()
         _currentForegroundPackage.value = pkg
         _currentForegroundLabel.value = label
+    }
+
+    fun getCurrentMode(): String {
+        return _currentMode.value
+    }
+
+    fun cycleMode() {
+        val modes = listOf("Auto Mode", "Shorts Mode", "Music Mode", "Scroll Mode")
+        val currentIndex = modes.indexOf(_currentMode.value).let { if (it == -1) 0 else it }
+        val nextMode = modes[(currentIndex + 1) % modes.size]
+        prefs.edit().putString(KEY_CURRENT_MODE, nextMode).apply()
+        _currentMode.value = nextMode
     }
 
     fun saveEvent(event: KeyEvent, source: String = "AccessibilityService") {
@@ -206,6 +226,7 @@ class LastEventStore(context: Context) {
         private const val KEY_STATUS_NOTIFICATION_ENABLED = "status_notification_enabled"
         private const val KEY_FOREGROUND_PACKAGE = "foreground_package"
         private const val KEY_FOREGROUND_LABEL = "foreground_label"
+        private const val KEY_CURRENT_MODE = "current_mode"
 
         private const val KEY_CMD_PLAY_DETECTED = "cmd_play_detected"
         private const val KEY_CMD_PLAY_TIME = "cmd_play_time"

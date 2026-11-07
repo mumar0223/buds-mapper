@@ -29,7 +29,7 @@ class BudsAccessibilityService : AccessibilityService() {
         super.onCreate()
         eventStore = LastEventStore.getInstance(this)
         mediaSessionManager = BudsMediaSessionManager(this)
-        statusNotificationManager = StatusNotificationManager(this)
+        statusNotificationManager = StatusNotificationManager(this, mediaSessionManager)
 
         // Sync MediaSession lifecycle with user preference
         serviceScope.launch {
@@ -39,13 +39,14 @@ class BudsAccessibilityService : AccessibilityService() {
             }
         }
 
-        // Reactively sync notification whenever toggle OR foreground app changes
+        // Reactively sync notification whenever toggle, foreground app, or mode changes
         serviceScope.launch {
             combine(
                 eventStore.statusNotificationEnabled,
                 eventStore.currentForegroundPackage,
-                eventStore.currentForegroundLabel
-            ) { enabled, pkg, label ->
+                eventStore.currentForegroundLabel,
+                eventStore.currentMode
+            ) { enabled, pkg, label, _ ->
                 Triple(enabled, pkg, label)
             }.collect { (enabled, pkg, label) ->
                 if (enabled) {

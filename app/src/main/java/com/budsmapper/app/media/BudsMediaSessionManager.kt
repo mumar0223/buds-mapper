@@ -2,11 +2,13 @@ package com.budsmapper.app.media
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioPlaybackConfiguration
 import android.media.AudioTrack
+import android.media.MediaMetadata
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.os.Build
@@ -70,6 +72,29 @@ class BudsMediaSessionManager(private val context: Context) {
     @Synchronized
     fun isSessionActive(): Boolean {
         return mediaSession?.isActive == true
+    }
+
+    @Synchronized
+    fun getSessionToken(): MediaSession.Token? {
+        if (mediaSession == null) {
+            initializeSession()
+        }
+        return mediaSession?.sessionToken
+    }
+
+    @Synchronized
+    fun updateMetadata(title: String, artist: String, album: String, artwork: Bitmap) {
+        if (mediaSession == null) {
+            initializeSession()
+        }
+        val metadata = MediaMetadata.Builder()
+            .putString(MediaMetadata.METADATA_KEY_TITLE, title)
+            .putString(MediaMetadata.METADATA_KEY_ARTIST, artist)
+            .putString(MediaMetadata.METADATA_KEY_ALBUM, album)
+            .putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, artwork)
+            .putBitmap(MediaMetadata.METADATA_KEY_ART, artwork)
+            .build()
+        mediaSession?.setMetadata(metadata)
     }
 
     private fun startSilentAudio() {

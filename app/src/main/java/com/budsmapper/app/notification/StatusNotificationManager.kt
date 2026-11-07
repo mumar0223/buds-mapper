@@ -8,34 +8,31 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
 import android.graphics.Paint
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffXfermode
 import android.graphics.RadialGradient
-import android.graphics.RectF
 import android.graphics.Shader
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
+import android.graphics.drawable.Icon
 import android.os.Build
 import android.util.Log
-import android.widget.RemoteViews
 import androidx.core.content.ContextCompat
 import com.budsmapper.app.MainActivity
 import com.budsmapper.app.R
 import com.budsmapper.app.data.LastEventStore
+import com.budsmapper.app.media.BudsMediaSessionManager
 
-class StatusNotificationManager(private val context: Context) {
+class StatusNotificationManager(
+    private val context: Context,
+    private val mediaSessionManager: BudsMediaSessionManager
+) {
 
     private val appContext = context.applicationContext
     private val notificationManager =
         appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     private val eventStore = LastEventStore.getInstance(appContext)
-    private val backgroundArtwork: Bitmap = generateAestheticBackground()
 
     @Volatile
     private var lastAppLabel: String = "Buds Mapper"
@@ -43,14 +40,25 @@ class StatusNotificationManager(private val context: Context) {
     @Volatile
     private var lastPackageName: String = appContext.packageName
 
-    // Event-driven self-healing receiver: if Android 14+ / One UI "Clear All" dismisses
-    // the ongoing notification, immediately re-pin it with 0.0% idle CPU overhead.
-    private val dismissReceiver = object : BroadcastReceiver() {
+    private val actionReceiver = object : BroadcastReceiver() {
         override fun onReceive(ctx: Context?, intent: Intent?) {
-            if (intent?.action == ACTION_NOTIFICATION_DISMISSED) {
-                if (eventStore.isStatusNotificationEnabled()) {
-                    Log.d(TAG, "Notification dismissed by system/user; re-pinning compact card")
+            when (intent?.action) {
+                ACTION_TOGGLE_CAPTURE -> {
+                    val enabled = !eventStore.isMediaSessionCaptureEnabled()
+                    Log.i(TAG, "Notification action: Toggling capture to $enabled")
+                    eventStore.setMediaSessionCaptureEnabled(enabled)
                     updateNotification(lastAppLabel, lastPackageName)
+                }
+                ACTION_CYCLE_MODE -> {
+                    eventStore.cycleMode()
+                    Log.i(TAG, "Notification action: Cycled mode to ${eventStore.getCurrentMode()}")
+                    updateNotification(lastAppLabel, lastPackageName)
+                }
+                ACTION_NOTIFICATION_DISMISSED -> {
+                    if (eventStore.isStatusNotificationEnabled()) {
+                        Log.d(TAG, "Media notification dismissed; re-pinning command center")
+                        updateNotification(lastAppLabel, lastPackageName)
+                    }
                 }
             }
         }
@@ -58,23 +66,16 @@ class StatusNotificationManager(private val context: Context) {
 
     init {
         createNotificationChannel()
-        registerDismissReceiver()
+        registerActionReceiver()
     }
 
     private fun createNotificationChannel() {
-        // Clean up legacy channel IDs that may have cached error states in One UI
-        try {
-            notificationManager.deleteNotificationChannel("buds_mapper_active_status")
-            notificationManager.deleteNotificationChannel("buds_mapper_active_status_v2")
-            notificationManager.deleteNotificationChannel("buds_mapper_active_status_v3")
-        } catch (_: Exception) {}
-
         val channel = NotificationChannel(
             CHANNEL_ID,
             CHANNEL_NAME,
             NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
-            description = "Displays the currently active foreground application in a compact Spotify-styled card."
+            description = "Displays the Spotify-styled Buds Mapper Earbuds Command Center."
             enableVibration(false)
             setSound(null, null)
             setShowBadge(false)
@@ -83,11 +84,15 @@ class StatusNotificationManager(private val context: Context) {
         notificationManager.createNotificationChannel(channel)
     }
 
-    private fun registerDismissReceiver() {
-        val filter = IntentFilter(ACTION_NOTIFICATION_DISMISSED)
+    private fun registerActionReceiver() {
+        val filter = IntentFilter().apply {
+            addAction(ACTION_TOGGLE_CAPTURE)
+            addAction(ACTION_CYCLE_MODE)
+            addAction(ACTION_NOTIFICATION_DISMISSED)
+        }
         ContextCompat.registerReceiver(
             appContext,
-            dismissReceiver,
+            actionReceiver,
             filter,
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
@@ -97,19 +102,37 @@ class StatusNotificationManager(private val context: Context) {
         lastAppLabel = appLabel
         lastPackageName = packageName
 
-        val appIconBitmap = resolveAppIcon(packageName)
+        val isCaptureActive = eventStore.isMediaSessionCaptureEnabled()
+        val currentStoreMode = eventStore.getCurrentMode()
 
-        val remoteViews = RemoteViews(appContext.packageName, R.layout.notification_compact_spotify).apply {
-            setImageViewBitmap(R.id.notification_bg, backgroundArtwork)
-            setTextViewText(R.id.notification_title, "Buds Mapper")
-            setTextViewText(R.id.notification_subtitle, appLabel)
-            if (appIconBitmap != null) {
-                setImageViewBitmap(R.id.notification_app_icon, appIconBitmap)
-            } else {
-                setImageViewResource(R.id.notification_app_icon, R.drawable.ic_buds_mapper)
-            }
+        // 1. Resolve Dynamic Mode and Gesture Cheat Sheet based on active application
+        val effectiveMode = when {
+            currentStoreMode != "Auto Mode" -> currentStoreMode
+            packageName.contains("youtube") || packageName.contains("tiktok") || packageName.contains("instagram") -> "Shorts Mode"
+            packageName.contains("spotify") || packageName.contains("music") || packageName.contains("audio") -> "Music Mode"
+            else -> "Scroll Mode"
         }
 
+        val displayTitle = "$appLabel • $effectiveMode"
+        val displaySubtitle = when (effectiveMode) {
+            "Shorts Mode" -> "Double Tap: Next Video • Triple Tap: Prev"
+            "Music Mode" -> "Single Tap: Play/Pause • Double: Next Track"
+            else -> "Double Tap: Scroll Down • Triple: Scroll Up"
+        }
+        val statusBadge = if (isCaptureActive) "ᛒ Earbuds Active" else "⏸ Remapping Paused"
+
+        // 2. Generate Spotify-style full-bleed dynamic artwork matching the foreground app
+        val artwork = generateDynamicArtwork(packageName)
+
+        // 3. Sync MediaSession metadata so SystemUI renders the full-bleed artwork across the tile
+        mediaSessionManager.updateMetadata(
+            title = displayTitle,
+            artist = displaySubtitle,
+            album = statusBadge,
+            artwork = artwork
+        )
+
+        // 4. Content intent (opens app dashboard)
         val launchIntent = Intent(appContext, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
@@ -119,6 +142,35 @@ class StatusNotificationManager(private val context: Context) {
             launchIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+
+        // 5. Interactive action buttons
+        val toggleIntent = Intent(ACTION_TOGGLE_CAPTURE).apply { setPackage(appContext.packageName) }
+        val togglePendingIntent = PendingIntent.getBroadcast(
+            appContext, 10, toggleIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val toggleIcon = if (isCaptureActive) R.drawable.ic_pause else R.drawable.ic_play
+        val toggleTitle = if (isCaptureActive) "Pause" else "Resume"
+        val toggleAction = Notification.Action.Builder(
+            Icon.createWithResource(appContext, toggleIcon),
+            toggleTitle,
+            togglePendingIntent
+        ).build()
+
+        val modeIntent = Intent(ACTION_CYCLE_MODE).apply { setPackage(appContext.packageName) }
+        val modePendingIntent = PendingIntent.getBroadcast(
+            appContext, 11, modeIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val modeAction = Notification.Action.Builder(
+            Icon.createWithResource(appContext, R.drawable.ic_switch_mode),
+            "Mode",
+            modePendingIntent
+        ).build()
+
+        val settingsAction = Notification.Action.Builder(
+            Icon.createWithResource(appContext, R.drawable.ic_buds_mapper),
+            "Settings",
+            contentPendingIntent
+        ).build()
 
         val deleteIntent = Intent(ACTION_NOTIFICATION_DISMISSED).apply {
             setPackage(appContext.packageName)
@@ -130,14 +182,27 @@ class StatusNotificationManager(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // 6. Build the genuine MediaStyle notification linked to MediaSession
+        val sessionToken = mediaSessionManager.getSessionToken()
+        val mediaStyle = Notification.MediaStyle()
+        if (sessionToken != null) {
+            mediaStyle.setMediaSession(sessionToken)
+        }
+        mediaStyle.setShowActionsInCompactView(0, 1) // Toggle & Mode in compact view
+
         val builder = Notification.Builder(appContext, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_buds_mapper)
-            .setCustomContentView(remoteViews)
-            .setContentTitle("Buds Mapper")
-            .setContentText(appLabel)
+            .setContentTitle(displayTitle)
+            .setContentText(displaySubtitle)
+            .setSubText(statusBadge)
+            .setLargeIcon(artwork)
+            .setStyle(mediaStyle)
+            .addAction(toggleAction)
+            .addAction(modeAction)
+            .addAction(settingsAction)
             .setContentIntent(contentPendingIntent)
             .setDeleteIntent(deletePendingIntent)
-            .setCategory(Notification.CATEGORY_STATUS)
+            .setCategory(Notification.CATEGORY_TRANSPORT)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setOngoing(true)
             .setAutoCancel(false)
@@ -149,124 +214,119 @@ class StatusNotificationManager(private val context: Context) {
 
         try {
             notificationManager.notify(NOTIFICATION_ID, builder.build())
-            Log.d(TAG, "Status notification updated for app: $appLabel ($packageName)")
+            Log.d(TAG, "Spotify-style Media Command Center updated for: $displayTitle")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to post status notification", e)
+            Log.e(TAG, "Failed to post media status notification", e)
         }
     }
 
     fun cancelNotification() {
         notificationManager.cancel(NOTIFICATION_ID)
-        Log.i(TAG, "Status notification cancelled")
+        Log.i(TAG, "Media status notification cancelled")
     }
 
     fun release() {
         try {
-            appContext.unregisterReceiver(dismissReceiver)
-        } catch (_: IllegalArgumentException) {
-            // Already unregistered
-        }
+            appContext.unregisterReceiver(actionReceiver)
+        } catch (_: IllegalArgumentException) {}
         cancelNotification()
     }
 
-    private fun resolveAppIcon(packageName: String): Bitmap? {
-        return try {
-            val drawable: Drawable = appContext.packageManager.getApplicationIcon(packageName)
-            drawableToRoundedBitmap(drawable)
-        } catch (_: PackageManager.NameNotFoundException) {
-            null
-        } catch (e: Exception) {
-            Log.w(TAG, "Could not resolve icon for $packageName", e)
-            null
-        }
-    }
-
-    private fun drawableToRoundedBitmap(drawable: Drawable): Bitmap {
-        val size = 96
-        val srcBitmap = if (drawable is BitmapDrawable && drawable.bitmap != null) {
-            val raw = drawable.bitmap
-            // Convert HARDWARE bitmaps to ARGB_8888 so software Canvas never crashes on One UI
-            val softwareBmp = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && raw.config == Bitmap.Config.HARDWARE) {
-                raw.copy(Bitmap.Config.ARGB_8888, false)
-            } else {
-                raw
-            }
-            Bitmap.createScaledBitmap(softwareBmp, size, size, true)
-        } else {
-            val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bmp)
-            drawable.setBounds(0, 0, size, size)
-            drawable.draw(canvas)
-            bmp
-        }
-
-        val output = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(output)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        val rectF = RectF(0f, 0f, size.toFloat(), size.toFloat())
-        val cornerRadius = 20f
-
-        canvas.drawRoundRect(rectF, cornerRadius, cornerRadius, paint)
-        paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
-        canvas.drawBitmap(srcBitmap, 0f, 0f, paint)
-
-        return output
-    }
-
     /**
-     * Generates a compact 600x128 dark ambient artwork image with built-in contrast scrim.
+     * Generates a 16:9 dynamic Spotify-style full-bleed ambient artwork bitmap
+     * themed to the currently active application.
      */
-    private fun generateAestheticBackground(): Bitmap {
-        val width = 600
-        val height = 128
+    private fun generateDynamicArtwork(packageName: String): Bitmap {
+        val width = 720
+        val height = 405
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
-        // 1. Deep cosmic gradient base
+        val isYouTube = packageName.contains("youtube")
+        val isSpotify = packageName.contains("spotify") || packageName.contains("music")
+        val isSocial = packageName.contains("instagram") || packageName.contains("tiktok")
+
+        val (c1, c2, c3, orbColor1, orbColor2) = when {
+            isYouTube -> listOf(
+                Color.parseColor("#2C060B"),
+                Color.parseColor("#150205"),
+                Color.parseColor("#08080C"),
+                Color.parseColor("#80FF0033"),
+                Color.parseColor("#60FF3366")
+            )
+            isSpotify -> listOf(
+                Color.parseColor("#0B2A18"),
+                Color.parseColor("#06160D"),
+                Color.parseColor("#080C0E"),
+                Color.parseColor("#801DB954"),
+                Color.parseColor("#6010D876")
+            )
+            isSocial -> listOf(
+                Color.parseColor("#280826"),
+                Color.parseColor("#14041C"),
+                Color.parseColor("#090812"),
+                Color.parseColor("#80E1306C"),
+                Color.parseColor("#60FD1D1D")
+            )
+            else -> listOf(
+                Color.parseColor("#101C38"),
+                Color.parseColor("#0B1326"),
+                Color.parseColor("#080B14"),
+                Color.parseColor("#804C8DFF"),
+                Color.parseColor("#6000F2FE")
+            )
+        }
+
+        // Base ambient gradient
         val basePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = LinearGradient(
                 0f, 0f, width.toFloat(), height.toFloat(),
-                intArrayOf(
-                    Color.parseColor("#121424"),
-                    Color.parseColor("#1B1A3A"),
-                    Color.parseColor("#10223A"),
-                    Color.parseColor("#0C101E")
-                ),
-                floatArrayOf(0f, 0.35f, 0.75f, 1f),
+                intArrayOf(c1, c2, c3),
+                floatArrayOf(0f, 0.45f, 1f),
                 Shader.TileMode.CLAMP
             )
         }
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), basePaint)
 
-        // 2. Subtle ambient glow orbs
-        val orbPaint1 = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        // Glow Orb 1 (Top Left)
+        val orb1 = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = RadialGradient(
-                width * 0.15f, height * 0.4f, 100f,
-                Color.parseColor("#4D5B86E5"),
-                Color.TRANSPARENT,
-                Shader.TileMode.CLAMP
+                width * 0.2f, height * 0.35f, 180f,
+                orbColor1, Color.TRANSPARENT, Shader.TileMode.CLAMP
             )
         }
-        canvas.drawCircle(width * 0.15f, height * 0.4f, 100f, orbPaint1)
+        canvas.drawCircle(width * 0.2f, height * 0.35f, 180f, orb1)
 
-        val orbPaint2 = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        // Glow Orb 2 (Right Center)
+        val orb2 = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = RadialGradient(
-                width * 0.85f, height * 0.6f, 110f,
-                Color.parseColor("#4436D1DC"),
-                Color.TRANSPARENT,
+                width * 0.8f, height * 0.65f, 220f,
+                orbColor2, Color.TRANSPARENT, Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawCircle(width * 0.8f, height * 0.65f, 220f, orb2)
+
+        // Dark gradient scrim across bottom for maximum text contrast
+        val scrimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                0f, height * 0.3f, 0f, height.toFloat(),
+                Color.TRANSPARENT, Color.parseColor("#E6080A10"),
                 Shader.TileMode.CLAMP
             )
         }
-        canvas.drawCircle(width * 0.85f, height * 0.6f, 110f, orbPaint2)
+        canvas.drawRect(0f, height * 0.3f, width.toFloat(), height.toFloat(), scrimPaint)
 
         return bitmap
     }
 
     companion object {
         private const val TAG = "StatusNotifMgr"
-        private const val CHANNEL_ID = "buds_mapper_active_status_v4"
-        private const val CHANNEL_NAME = "Buds Mapper Status"
+        private const val CHANNEL_ID = "buds_mapper_command_center_v1"
+        private const val CHANNEL_NAME = "Buds Mapper Command Center"
         private const val NOTIFICATION_ID = 1001
+
+        private const val ACTION_TOGGLE_CAPTURE = "com.budsmapper.app.ACTION_TOGGLE_CAPTURE"
+        private const val ACTION_CYCLE_MODE = "com.budsmapper.app.ACTION_CYCLE_MODE"
         private const val ACTION_NOTIFICATION_DISMISSED = "com.budsmapper.app.ACTION_NOTIFICATION_DISMISSED"
     }
 }
