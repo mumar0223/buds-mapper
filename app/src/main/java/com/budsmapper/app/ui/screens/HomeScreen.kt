@@ -180,10 +180,10 @@ fun HomeScreen(
                 foregroundPackage = foregroundPackage
             )
 
-            // MEDIASESSION CAPTURE MODE CARD
+            // SMART GESTURE ENGINE (AUTO-ENGAGE)
             MediaSessionCaptureCard(
                 isCaptureEnabled = isMediaSessionCaptureEnabled,
-                onToggleCapture = { enabled -> eventStore.setMediaSessionCaptureEnabled(enabled) }
+                currentApp = foregroundLabel
             )
 
             // SERVICE CARD (ACCESSIBILITY SERVICE)
@@ -507,7 +507,7 @@ private fun ForegroundAppCard(
 @Composable
 private fun MediaSessionCaptureCard(
     isCaptureEnabled: Boolean,
-    onToggleCapture: (Boolean) -> Unit
+    currentApp: String
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -531,31 +531,34 @@ private fun MediaSessionCaptureCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "MediaSession Priority Engine",
+                        text = "Smart Gesture Engine",
                         style = MaterialTheme.typography.titleLarge,
                         color = TextPrimary
                     )
                     Text(
-                        text = if (isCaptureEnabled) "Active • Capturing Galaxy Buds Core taps" else "Inactive",
+                        text = if (isCaptureEnabled) "Auto-Active in $currentApp" else "Standby · Ready for enabled apps",
                         style = MaterialTheme.typography.labelSmall,
                         color = if (isCaptureEnabled) StatusSuccess else TextSecondary
                     )
                 }
 
-                Switch(
-                    checked = isCaptureEnabled,
-                    onCheckedChange = onToggleCapture,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
-                        checkedTrackColor = PrimaryBlue,
-                        uncheckedThumbColor = StatusInactive,
-                        uncheckedTrackColor = DarkSurfaceVariant
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (isCaptureEnabled) StatusSuccessContainer else StatusInactiveContainer)
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = if (isCaptureEnabled) "ACTIVE" else "STANDBY",
+                        color = if (isCaptureEnabled) StatusSuccess else StatusInactive,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold
                     )
-                )
+                }
             }
 
             Text(
-                text = "Runs a static silent AudioTrack loop to hold top priority on MediaSessionStack. Bluetooth earbud taps route directly to Buds Mapper.",
+                text = "Automatically engages when an enabled app (e.g. YouTube) is in the foreground to remap earbud gestures to screen actions. Releases instantly for Spotify and unmapped apps with zero interference.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextSecondary
             )

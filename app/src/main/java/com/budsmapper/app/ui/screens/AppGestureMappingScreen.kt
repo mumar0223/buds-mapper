@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.sp
 import com.budsmapper.app.R
 import com.budsmapper.app.data.AppProfileStore
 import com.budsmapper.app.data.BudsMediaCommand
+import com.budsmapper.app.data.InstalledAppsManager
 import com.budsmapper.app.data.MappedAction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -109,17 +110,22 @@ fun AppGestureMappingScreen(
     val isEnabled = enabledPackages.contains(packageName)
     val mappingVersion by profileStore.mappingVersion.collectAsState()
 
-    var appIconBitmap by remember(packageName) { mutableStateOf<ImageBitmap?>(null) }
+    val cachedIcon = remember(packageName) {
+        InstalledAppsManager.getCachedApps().find { it.packageName == packageName }?.iconBitmap
+    }
+    var appIconBitmap by remember(packageName) { mutableStateOf(cachedIcon) }
     var selectedCommandForEdit by remember { mutableStateOf<CommandGestureInfo?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val coroutineScope = rememberCoroutineScope()
 
-    // Resolve app icon on background thread
+    // Fallback: Resolve app icon on background thread only if not in cache
     LaunchedEffect(packageName) {
-        withContext(Dispatchers.IO) {
-            val bmp = loadAppIcon(context, packageName)
-            withContext(Dispatchers.Main) {
-                appIconBitmap = bmp
+        if (appIconBitmap == null) {
+            withContext(Dispatchers.IO) {
+                val bmp = loadAppIcon(context, packageName)
+                withContext(Dispatchers.Main) {
+                    appIconBitmap = bmp
+                }
             }
         }
     }

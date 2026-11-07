@@ -74,21 +74,17 @@ fun AppProfilesScreen(
     }
 
     val context = LocalContext.current
-    var installedApps by remember { mutableStateOf<List<InstalledApp>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
+    var installedApps by remember { mutableStateOf<List<InstalledApp>>(InstalledAppsManager.getCachedApps()) }
+    var isLoading by remember { mutableStateOf(installedApps.isEmpty()) }
     var searchQuery by remember { mutableStateOf("") }
 
     val enabledPackages by profileStore.enabledPackages.collectAsState()
 
-    // Load launchable applications in background coroutine
+    // Load or refresh launchable applications
     LaunchedEffect(Unit) {
-        withContext(Dispatchers.IO) {
-            val apps = InstalledAppsManager.getLaunchableApps(context)
-            withContext(Dispatchers.Main) {
-                installedApps = apps
-                isLoading = false
-            }
-        }
+        val apps = InstalledAppsManager.getOrRefreshApps(context, forceRefresh = true)
+        installedApps = apps
+        isLoading = false
     }
 
     val filteredApps = remember(installedApps, searchQuery) {
@@ -235,7 +231,7 @@ private fun AppProfileItemCard(
     onToggleEnabled: (Boolean) -> Unit,
     onClickCard: () -> Unit
 ) {
-    val appBitmap = remember(app.packageName) { app.toImageBitmap() }
+    val appBitmap = app.iconBitmap
 
     Box(
         modifier = Modifier

@@ -17,6 +17,7 @@ import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
+import com.budsmapper.app.accessibility.BudsAccessibilityService
 import com.budsmapper.app.data.AppProfileStore
 import com.budsmapper.app.data.BudsMediaCommand
 import com.budsmapper.app.data.LastEventStore
@@ -216,6 +217,8 @@ class BudsMediaSessionManager(private val context: Context) {
                 }
 
                 if (keyEvent != null) {
+                    var wasActionConsumed = false
+
                     // Only process ACTION_DOWN to avoid double-triggering gestures
                     if (keyEvent.action == KeyEvent.ACTION_DOWN) {
                         val keyName = KeyEvent.keyCodeToString(keyEvent.keyCode)
@@ -223,7 +226,7 @@ class BudsMediaSessionManager(private val context: Context) {
                         val currentLabel = eventStore.currentForegroundLabel.value
                         val profileStore = AppProfileStore.getInstance(context)
 
-                        val mappedActionDesc = if (profileStore.isProfileEnabled(currentPkg)) {
+                        if (profileStore.isProfileEnabled(currentPkg)) {
                             val command = when (keyEvent.keyCode) {
                                 KeyEvent.KEYCODE_MEDIA_PLAY -> BudsMediaCommand.MEDIA_PLAY
                                 KeyEvent.KEYCODE_MEDIA_PAUSE -> BudsMediaCommand.MEDIA_PAUSE
@@ -234,28 +237,32 @@ class BudsMediaSessionManager(private val context: Context) {
                             }
                             if (command != null) {
                                 val action = profileStore.getMapping(currentPkg, command)
+                                val desc = "${action.displayName} ($currentLabel)"
                                 Log.i(
                                     TAG,
                                     "Profile active for $currentLabel ($currentPkg): ${command.key} -> ${action.displayName}"
                                 )
-                                "${action.displayName} ($currentLabel)"
-                            } else {
-                                "Default Media ($currentLabel)"
+                                eventStore.saveEvent(keyEvent, source = "MediaSession", mappedAction = desc)
+
+                                // Dispatch physical gesture on screen via AccessibilityService!
+                                wasActionConsumed = BudsAccessibilityService.instance?.executeAction(action) ?: false
                             }
                         } else {
                             Log.d(TAG, "Profile disabled for foreground app: $currentLabel ($currentPkg)")
-                            "Default Media (Profile disabled)"
+                            eventStore.saveEvent(
+                                keyEvent,
+                                source = "MediaSession",
+                                mappedAction = "Pass-through ($currentLabel)"
+                            )
                         }
-
-                        Log.i(
-                            TAG,
-                            "onMediaButtonEvent intercepted ACTION_DOWN: keyCode=${keyEvent.keyCode} ($keyName), mappedAction=$mappedActionDesc"
-                        )
-                        eventStore.saveEvent(keyEvent, source = "MediaSession", mappedAction = mappedActionDesc)
                     }
 
-                    // Return true to consume both ACTION_DOWN and ACTION_UP
-                    return true
+                    // Return true if our mapped gesture consumed the event;
+                    // otherwise return false so native Android media handling passes through!
+                    if (wasActionConsumed) {
+                        return true
+                    }
+                    return false
                 }
 
                 return super.onMediaButtonEvent(mediaButtonIntent)
