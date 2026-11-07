@@ -17,6 +17,8 @@ import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
+import com.budsmapper.app.data.AppProfileStore
+import com.budsmapper.app.data.BudsMediaCommand
 import com.budsmapper.app.data.LastEventStore
 
 class BudsMediaSessionManager(private val context: Context) {
@@ -217,11 +219,39 @@ class BudsMediaSessionManager(private val context: Context) {
                     // Only process ACTION_DOWN to avoid double-triggering gestures
                     if (keyEvent.action == KeyEvent.ACTION_DOWN) {
                         val keyName = KeyEvent.keyCodeToString(keyEvent.keyCode)
+                        val currentPkg = eventStore.currentForegroundPackage.value
+                        val currentLabel = eventStore.currentForegroundLabel.value
+                        val profileStore = AppProfileStore.getInstance(context)
+
+                        val mappedActionDesc = if (profileStore.isProfileEnabled(currentPkg)) {
+                            val command = when (keyEvent.keyCode) {
+                                KeyEvent.KEYCODE_MEDIA_PLAY -> BudsMediaCommand.MEDIA_PLAY
+                                KeyEvent.KEYCODE_MEDIA_PAUSE -> BudsMediaCommand.MEDIA_PAUSE
+                                KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> BudsMediaCommand.MEDIA_PLAY_PAUSE
+                                KeyEvent.KEYCODE_MEDIA_NEXT -> BudsMediaCommand.MEDIA_NEXT
+                                KeyEvent.KEYCODE_MEDIA_PREVIOUS -> BudsMediaCommand.MEDIA_PREVIOUS
+                                else -> null
+                            }
+                            if (command != null) {
+                                val action = profileStore.getMapping(currentPkg, command)
+                                Log.i(
+                                    TAG,
+                                    "Profile active for $currentLabel ($currentPkg): ${command.key} -> ${action.displayName}"
+                                )
+                                "${action.displayName} ($currentLabel)"
+                            } else {
+                                "Default Media ($currentLabel)"
+                            }
+                        } else {
+                            Log.d(TAG, "Profile disabled for foreground app: $currentLabel ($currentPkg)")
+                            "Default Media (Profile disabled)"
+                        }
+
                         Log.i(
                             TAG,
-                            "onMediaButtonEvent intercepted ACTION_DOWN: keyCode=${keyEvent.keyCode} ($keyName), deviceId=${keyEvent.deviceId}"
+                            "onMediaButtonEvent intercepted ACTION_DOWN: keyCode=${keyEvent.keyCode} ($keyName), mappedAction=$mappedActionDesc"
                         )
-                        eventStore.saveEvent(keyEvent, source = "MediaSession")
+                        eventStore.saveEvent(keyEvent, source = "MediaSession", mappedAction = mappedActionDesc)
                     }
 
                     // Return true to consume both ACTION_DOWN and ACTION_UP

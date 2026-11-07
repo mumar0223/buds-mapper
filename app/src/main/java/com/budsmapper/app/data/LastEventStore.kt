@@ -13,7 +13,8 @@ data class RecordedKeyEvent(
     val action: String,
     val timestamp: Long,
     val deviceId: Int,
-    val source: String = "AccessibilityService" // "AccessibilityService" or "MediaSession"
+    val source: String = "AccessibilityService", // "AccessibilityService" or "MediaSession"
+    val mappedAction: String? = null
 )
 
 data class CommandDetectionState(
@@ -134,7 +135,11 @@ class LastEventStore(context: Context) {
         _currentMode.value = nextMode
     }
 
-    fun saveEvent(event: KeyEvent, source: String = "AccessibilityService") {
+    fun saveEvent(
+        event: KeyEvent,
+        source: String = "AccessibilityService",
+        mappedAction: String? = null
+    ) {
         val keyCode = event.keyCode
         val keyName = KeyEvent.keyCodeToString(keyCode)
         val action = when (event.action) {
@@ -152,6 +157,12 @@ class LastEventStore(context: Context) {
             .putLong(KEY_TIMESTAMP, timestamp)
             .putInt(KEY_DEVICE_ID, deviceId)
             .putString(KEY_SOURCE, source)
+
+        if (mappedAction != null) {
+            editor.putString(KEY_MAPPED_ACTION, mappedAction)
+        } else {
+            editor.remove(KEY_MAPPED_ACTION)
+        }
 
         when (keyCode) {
             KeyEvent.KEYCODE_MEDIA_PLAY -> {
@@ -197,7 +208,8 @@ class LastEventStore(context: Context) {
             action = prefs.getString(KEY_ACTION, "UNKNOWN") ?: "UNKNOWN",
             timestamp = prefs.getLong(KEY_TIMESTAMP, 0L),
             deviceId = prefs.getInt(KEY_DEVICE_ID, 0),
-            source = prefs.getString(KEY_SOURCE, "AccessibilityService") ?: "AccessibilityService"
+            source = prefs.getString(KEY_SOURCE, "AccessibilityService") ?: "AccessibilityService",
+            mappedAction = prefs.getString(KEY_MAPPED_ACTION, null)
         )
     }
 
@@ -222,6 +234,7 @@ class LastEventStore(context: Context) {
         private const val KEY_TIMESTAMP = "last_timestamp"
         private const val KEY_DEVICE_ID = "last_device_id"
         private const val KEY_SOURCE = "last_source"
+        private const val KEY_MAPPED_ACTION = "last_mapped_action"
         private const val KEY_MEDIA_SESSION_CAPTURE_ENABLED = "media_session_capture_enabled"
         private const val KEY_STATUS_NOTIFICATION_ENABLED = "status_notification_enabled"
         private const val KEY_FOREGROUND_PACKAGE = "foreground_package"

@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
+import com.budsmapper.app.data.AppProfileStore
 import com.budsmapper.app.data.LastEventStore
 import com.budsmapper.app.media.BudsMediaSessionManager
 import com.budsmapper.app.notification.StatusNotificationManager
@@ -39,13 +40,14 @@ class BudsAccessibilityService : AccessibilityService() {
             }
         }
 
-        // Reactively sync notification whenever toggle, foreground app, or mode changes
+        // Reactively sync notification whenever toggle, foreground app, mode, or app profile changes
         serviceScope.launch {
+            val profileStore = AppProfileStore.getInstance(this@BudsAccessibilityService)
             combine(
                 eventStore.statusNotificationEnabled,
                 eventStore.currentForegroundPackage,
                 eventStore.currentForegroundLabel,
-                eventStore.currentMode
+                profileStore.enabledPackages
             ) { enabled, pkg, label, _ ->
                 Triple(enabled, pkg, label)
             }.collect { (enabled, pkg, label) ->

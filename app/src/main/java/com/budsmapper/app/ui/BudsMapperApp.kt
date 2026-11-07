@@ -1,14 +1,57 @@
 package com.budsmapper.app.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import com.budsmapper.app.data.AppProfileStore
 import com.budsmapper.app.data.LastEventStore
+import com.budsmapper.app.ui.screens.AppGestureMappingScreen
+import com.budsmapper.app.ui.screens.AppProfilesScreen
 import com.budsmapper.app.ui.screens.HomeScreen
 import com.budsmapper.app.ui.theme.BudsMapperTheme
 
-@Composable
-fun BudsMapperApp(eventStore: LastEventStore) {
-    BudsMapperTheme {
-        HomeScreen(eventStore = eventStore)
-    }
+sealed interface Screen {
+    data object Home : Screen
+    data object AppProfiles : Screen
+    data class GestureMapping(val packageName: String, val appLabel: String) : Screen
 }
 
+@Composable
+fun BudsMapperApp(
+    eventStore: LastEventStore,
+    profileStore: AppProfileStore = AppProfileStore.getInstance(LocalContext.current)
+) {
+    var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
+
+    BudsMapperTheme {
+        when (val screen = currentScreen) {
+            is Screen.Home -> {
+                HomeScreen(
+                    eventStore = eventStore,
+                    profileStore = profileStore,
+                    onNavigateToProfiles = { currentScreen = Screen.AppProfiles }
+                )
+            }
+            is Screen.AppProfiles -> {
+                AppProfilesScreen(
+                    profileStore = profileStore,
+                    onNavigateBack = { currentScreen = Screen.Home },
+                    onNavigateToMapping = { pkg, label ->
+                        currentScreen = Screen.GestureMapping(pkg, label)
+                    }
+                )
+            }
+            is Screen.GestureMapping -> {
+                AppGestureMappingScreen(
+                    packageName = screen.packageName,
+                    appLabel = screen.appLabel,
+                    profileStore = profileStore,
+                    onNavigateBack = { currentScreen = Screen.AppProfiles }
+                )
+            }
+        }
+    }
+}

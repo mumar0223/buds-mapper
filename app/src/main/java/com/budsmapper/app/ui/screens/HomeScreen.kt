@@ -51,6 +51,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.width
+import com.budsmapper.app.data.AppProfileStore
 import com.budsmapper.app.data.CommandDetectionState
 import com.budsmapper.app.data.LastEventStore
 import com.budsmapper.app.data.RecordedKeyEvent
@@ -74,6 +77,8 @@ import java.util.Locale
 @Composable
 fun HomeScreen(
     eventStore: LastEventStore,
+    profileStore: AppProfileStore,
+    onNavigateToProfiles: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -130,6 +135,7 @@ fun HomeScreen(
     val isStatusNotificationEnabled by eventStore.statusNotificationEnabled.collectAsState()
     val foregroundPackage by eventStore.currentForegroundPackage.collectAsState()
     val foregroundLabel by eventStore.currentForegroundLabel.collectAsState()
+    val enabledPackages by profileStore.enabledPackages.collectAsState()
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -146,6 +152,12 @@ fun HomeScreen(
             HeaderSection(
                 isServiceEnabled = isServiceEnabled,
                 isSessionActive = isMediaSessionCaptureEnabled
+            )
+
+            // APPLICATION PROFILES CARD
+            ApplicationProfilesCard(
+                activeCount = enabledPackages.size,
+                onManageProfilesClick = onNavigateToProfiles
             )
 
             // STATUS NOTIFICATION CARD (SPOTIFY STYLE COMPACT)
@@ -244,6 +256,96 @@ private fun HeaderSection(isServiceEnabled: Boolean, isSessionActive: Boolean) {
             label = if (isSessionActive) "CAPTURE ON" else if (isServiceEnabled) "SERVICE READY" else "OFFLINE",
             isActive = isSessionActive || isServiceEnabled
         )
+    }
+}
+
+@Composable
+private fun ApplicationProfilesCard(
+    activeCount: Int,
+    onManageProfilesClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onManageProfilesClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, DarkBorder)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(DarkSurfaceVariant),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "📱", fontSize = 18.sp)
+                    }
+                    Column {
+                        Text(
+                            text = "Application Profiles",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = if (activeCount > 0) "$activeCount profile${if (activeCount == 1) "" else "s"} active" else "No profiles enabled",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (activeCount > 0) StatusSuccess else TextSecondary
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (activeCount > 0) StatusSuccessContainer else StatusInactiveContainer)
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = if (activeCount > 0) "ACTIVE" else "OFF",
+                        color = if (activeCount > 0) StatusSuccess else StatusInactive,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            Text(
+                text = "Choose which installed applications have custom earbud gesture profiles and configure mappings for each.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary
+            )
+
+            Button(
+                onClick = onManageProfilesClick,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PrimaryBlue,
+                    contentColor = Color.White
+                )
+            ) {
+                Text(
+                    text = "Manage Application Profiles →",
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
     }
 }
 
@@ -702,6 +804,9 @@ private fun LastEventSection(lastEvent: RecordedKeyEvent?) {
                 ) {
                     EventDataRow(label = "Command / Key", value = "${lastEvent.keyName} (${lastEvent.keyCode})")
                     EventDataRow(label = "Action", value = lastEvent.action)
+                    if (lastEvent.mappedAction != null) {
+                        EventDataRow(label = "Assigned Action", value = lastEvent.mappedAction)
+                    }
                     EventDataRow(label = "Timestamp", value = formatTimestamp(lastEvent.timestamp))
                     EventDataRow(label = "Device ID", value = "${lastEvent.deviceId}")
                     EventDataRow(label = "Received Via", value = lastEvent.source)

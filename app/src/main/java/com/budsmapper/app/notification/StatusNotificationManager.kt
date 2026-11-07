@@ -12,6 +12,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.budsmapper.app.MainActivity
 import com.budsmapper.app.R
+import com.budsmapper.app.data.AppProfileStore
 import com.budsmapper.app.data.LastEventStore
 
 /**
@@ -94,12 +95,15 @@ class StatusNotificationManager(private val context: Context) {
         lastPackageName = packageName
 
         val isCaptureActive = eventStore.isMediaSessionCaptureEnabled()
+        val isProfileEnabled = AppProfileStore.getInstance(appContext).isProfileEnabled(packageName)
 
         val contentTitle = "$appLabel is active"
-        val contentText = if (isCaptureActive) {
+        val contentText = if (!isCaptureActive) {
+            "Gestures paused · Background service running"
+        } else if (isProfileEnabled) {
             "Gestures ready · Background service running"
         } else {
-            "Gestures paused · Background service running"
+            "Profile disabled · Background service running"
         }
 
         val launchIntent = Intent(appContext, MainActivity::class.java).apply {
