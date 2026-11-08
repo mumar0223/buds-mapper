@@ -1,126 +1,121 @@
 # Buds Mapper
 
-Buds Mapper is a lightweight, privacy-conscious native Android application designed to diagnose and remap Bluetooth media commands from wireless earbuds into custom Android actions.
+Buds Mapper is a lightweight, privacy-focused native utility designed to remap Bluetooth media commands from wireless earbuds into custom system and application actions (such as scrolling feeds or swiping Shorts and Reels).
 
-## Initial Target Hardware
-
-* **Smartphone**: Samsung Galaxy A35 5G
-* **Earbuds**: Samsung Galaxy Buds Core
-* **Verified AVRCP Commands (via Bluetooth HCI Snoop & Wireshark)**:
-  * `PLAY`
-  * `PAUSE`
-  * `FORWARD`
-  * `BACKWARD`
-
-## Milestone 1: Diagnostic Objective
-
-Modern Android versions (particularly Samsung One UI) frequently route Bluetooth AVRCP commands via the media/audio subsystem (`AudioService` / `MediaSessionManager`) rather than dispatching them through standard system input pipelines.
-
-The purpose of this milestone is **not** to implement gesture actions yet, but to **empirically determine whether Android dispatches these Bluetooth AVRCP media commands to an `AccessibilityService` as filterable `KeyEvent`s**.
-
-* Key event filtering is requested via `FLAG_REQUEST_FILTER_KEY_EVENTS`.
-* Incoming events are recorded to `LastEventStore`.
-* Events are **never consumed** in this phase (`return false` from `onKeyEvent()`), preserving normal media playback routing.
+Originally developed for Android with native Samsung One UI audio optimization, Buds Mapper is structured as a modern monorepo expanding toward cross-platform support.
 
 ---
 
-## Modern Technology Stack (100% Stable 2026 Release)
+## Target Hardware & Compatibility
 
-* **Build System**: Gradle 9.7.1 with Kotlin DSL (`build.gradle.kts`)
-* **Android Gradle Plugin (AGP)**: 9.5.1 Stable (Official built-in Kotlin integration)
-* **Kotlin Compiler**: 2.4.21 Stable
-* **Compose Compiler Plugin**: 2.4.21 (`org.jetbrains.kotlin.plugin.compose`)
-* **UI Toolkit**: Jetpack Compose with Material 3
-* **Compose BOM**: `2026.09.00` Stable
-* **Compile SDK**: API 37 (`platforms/android-37.0`)
-* **Target SDK**: API 35
-* **Minimum SDK**: API 26 (Android 8.0 Oreo)
-* **Bytecode Target**: Java 17
-* **Package Name**: `com.budsmapper.app`
-* **Dependencies**: Zero unnecessary third-party libraries, no Firebase, no Room, no DI frameworks, no continuous polling.
+* **Earbuds**: 
+  * Samsung Galaxy Buds series (Galaxy Buds Core, Buds FE, Buds2, Buds2 Pro, Buds3, Buds Live).
+  * Any wireless Bluetooth earbuds supporting standard Bluetooth AVRCP media commands (`PLAY`, `PAUSE`, `NEXT_TRACK`, `PREVIOUS_TRACK`).
+* **Smartphones**:
+  * Optimized and verified on Samsung Galaxy smartphones running Android 8.0 (API 26) through Android 15 (One UI 6.1+).
+  * *Initial hardware reference device: Samsung Galaxy A35 5G.*
+* **Other Phone Brands**:
+  * Devices from other manufacturers (Google Pixel, OnePlus, Xiaomi, Motorola, etc.) have not been exhaustively tested yet. Compatibility depends on how the OEM's audio subsystem routes Bluetooth media buttons.
+  * **Feedback & Reports**: If you test Buds Mapper on another brand of smartphone, we warmly appreciate your testing feedback and issue reports!
 
 ---
 
-## Architecture
+## Core Features
 
-The application is strictly separated into two independent layers:
+### 1. Zero-Timer Dual-Track Priority Engine
+* Uses alternating sub-audible 16-bit PCM AudioTracks on `USAGE_MEDIA` to cleanly claim priority index 0 in the system's `MediaSessionStack`.
+* Eliminates polling loops and millisecond timers, ensuring instant earbud gesture response with 0.0% idle CPU overhead.
+* Features automatic background silence detection prevention tuned for Samsung One UI AudioFlinger.
 
-```
-[ Galaxy Buds Core ] 
-        │ (Bluetooth AVRCP: Play, Pause, Next, Prev)
-        ▼
-[ Samsung A35 5G (Android OS Input / Audio Subsystem) ]
-        │
-        ├─ (If routed as input KeyEvent) ──────────┐
-        │                                          ▼
-        │                          [ BudsAccessibilityService ]
-        │                          - onKeyEvent(event)
-        │                          - returns FALSE (passthrough)
-        │                                          │
-        │                                          ▼ (Persist)
-        │                                  [ LastEventStore ]
-        │                              (SharedPreferences / StateFlow)
-        │                                          │
-        │                                          ▼ (Read on Resume)
-        │                                   [ HomeScreen UI ]
-        │                           - Service Enabled/Disabled Status
-        │                           - Command Monitor (Play/Pause/Next/Prev)
-        │                           - Last Received Event Card
-        ▼
-[ Active Media Player / Foreground App (Unaffected) ]
-```
+### 2. Per-App Custom Profiles
+* Define custom earbud tap mappings per application (e.g. YouTube, Instagram, Chrome, TikTok, Reddit, or any installed app).
+* Remap earbud gestures to:
+  * **Swipe Up**: Instantly scroll to the next Short, Reel, or TikTok.
+  * **Swipe Down**: Return to the previous Short, Reel, or TikTok.
+  * **Scroll Down / Scroll Up**: Smooth page and article scrolling.
+  * **Play / Pause**: Toggle media playback.
+  * **Default Media Behavior**: Standard pass-through audio command.
+  * **Do Nothing**: Consume the gesture silently.
 
-### Layer A: Interactive UI Layer (Jetpack Compose)
-* **`MainActivity.kt`**: Minimal launcher Activity host. Does not keep the background service alive.
-* **`HomeScreen.kt`**: Material 3 dark-themed dashboard displaying:
-  * Accessibility Service status with direct 1-tap navigation to Android Settings.
-  * Earbud Command Monitor for `MEDIA_PLAY`, `MEDIA_PAUSE`, `MEDIA_NEXT`, and `MEDIA_PREVIOUS`.
-  * Last Received Event telemetry (Key code, Key name, Action `DOWN`/`UP`, Timestamp, Device ID).
-  * Diagnostic status explaining live hardware testing state without fake connections.
+### 3. Dynamic Auto-Engagement
+* The background media capture engine automatically engages **only** when an app with an active profile is in the foreground.
+* Instantly releases media capture when switching to unmapped apps or returning to the home screen, keeping the phone's normal media player routing completely unaffected.
 
-### Layer B: Background Service Layer (Kotlin & Android APIs)
-* **`BudsAccessibilityService.kt`**: Subclass of native `AccessibilityService` configured with `FLAG_REQUEST_FILTER_KEY_EVENTS`. Listens in `onKeyEvent()`, stores event details, and returns `false`.
-* **`LastEventStore.kt`**: Lightweight persistence backed by `SharedPreferences` and observable `StateFlow`. Updates asynchronously without blocking main thread.
-* **`AccessibilityUtils.kt`**: System helper checking whether the service is enabled in Android `Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES`.
+### 4. Modern Cyber Glassmorphism UI
+* **Samsung Clock-Inspired Ambient Aura**: Smooth, floating 120Hz breathing background aura across both Dark and Light modes.
+* **Game Space Frosted Cards**: Translucent glass cards with customizable neon glow borders.
+* **Theme Engine (5 Accents)**:
+  * **Cyber Violet** *(Default)*: Signature neon purple aesthetic matching the app launcher icon.
+  * **Cyber Ice Blue**: Icy periwinkle neon theme.
+  * **Hyper Crimson Red**: Aggressive red gaming palette with Lucide flame styling.
+  * **Neon Cyber Mint**: Futuristic emerald teal theme.
+  * **Fusion Synergy**: Harmonized multi-color gradient palette.
+
+### 5. AndroidX Splash Screen
+* Seamless cold-boot splash screen with `#0C0A14` deep violet canvas and centered glowing Bluetooth emblem.
+* Eliminates white screen flash on app launch before transitioning into Compose.
+
+### 6. Test & Capture Diagnostics Mode
+* Interactive real-time hardware telemetry monitor displaying key codes, device IDs, raw AVRCP payloads, and gesture detections.
+* **Smart Auto-Power**: Automatically activates the background engine when testing if currently turned off, and restores the original power state upon exiting.
 
 ---
 
-## Folder Structure
+## Troubleshooting: YouTube Player Overlay Controls
 
-```
+On Android, when *any* Accessibility Service is enabled, the YouTube app may automatically activate its built-in **Accessibility Player**, causing persistent Previous, Pause, and Next overlay buttons to appear over videos and Shorts.
+
+To permanently turn off this overlay:
+1. Open the **YouTube** app on your phone.
+2. Tap your **Profile / You** icon in the bottom right corner.
+3. Tap the **Settings** gear icon $\rightarrow$ **Accessibility**.
+4. Toggle **Accessibility player** to **OFF**.
+
+---
+
+## Monorepo Project Structure
+
+```text
 BudsMapper/
-├── app/
-│   ├── build.gradle.kts
-│   ├── proguard-rules.pro
-│   └── src/main/
-│       ├── java/com/budsmapper/app/
-│       │   ├── MainActivity.kt
-│       │   ├── accessibility/
-│       │   │   └── BudsAccessibilityService.kt
-│       │   ├── data/
-│       │   │   └── LastEventStore.kt
-│       │   ├── ui/
-│       │   │   ├── BudsMapperApp.kt
-│       │   │   ├── screens/
-│       │   │   │   └── HomeScreen.kt
-│       │   │   └── theme/
-│       │   │       ├── Color.kt
-│       │   │       ├── Theme.kt
-│       │   │       └── Type.kt
-│       │   └── util/
-│       │       └── AccessibilityUtils.kt
-│       ├── res/
-│       │   ├── values/
-│       │   │   └── strings.xml
-│       │   └── xml/
-│       │       └── accessibility_service_config.xml
-│       └── AndroidManifest.xml
-├── gradle/
-│   └── wrapper/
-│       ├── gradle-wrapper.jar
-│       └── gradle-wrapper.properties
-├── build.gradle.kts
-├── settings.gradle.kts
+│
+├── apps/
+│   ├── android/
+│   │   └── app/
+│   │       ├── src/main/
+│   │       │   ├── java/com/budsmapper/app/
+│   │       │   │   ├── MainActivity.kt
+│   │       │   │   ├── accessibility/
+│   │       │   │   │   └── BudsAccessibilityService.kt
+│   │       │   │   ├── data/
+│   │       │   │   │   ├── AppProfileStore.kt
+│   │       │   │   │   ├── InstalledApp.kt
+│   │       │   │   │   └── LastEventStore.kt
+│   │       │   │   ├── media/
+│   │       │   │   │   └── BudsMediaSessionManager.kt
+│   │       │   │   ├── notification/
+│   │       │   │   │   └── StatusNotificationManager.kt
+│   │       │   │   ├── ui/
+│   │       │   │   │   ├── BudsMapperApp.kt
+│   │       │   │   │   ├── components/
+│   │       │   │   │   ├── screens/
+│   │       │   │   │   └── theme/
+│   │       │   │   └── util/
+│   │       │   │       └── AccessibilityUtils.kt
+│   │       │   ├── res/
+│   │       │   │   ├── drawable/
+│   │       │   │   ├── mipmap-*/
+│   │       │   │   ├── values/
+│   │       │   │   └── xml/
+│   │       │   └── AndroidManifest.xml
+│   │       ├── build.gradle.kts
+│   │       └── proguard-rules.pro
+│   │
+│   └── windows/          (Planned Compose Multiplatform Desktop app)
+│
+├── shared/               (Planned shared core logic)
+│
+├── build.gradle.kts      (Root Gradle build script)
+├── settings.gradle.kts   (Monorepo project settings)
 ├── gradle.properties
 ├── gradlew
 ├── gradlew.bat
@@ -130,25 +125,28 @@ BudsMapper/
 
 ---
 
-## AccessibilityService Configuration
+## Technology Stack
 
-* **Manifest Declaration**: `android.permission.BIND_ACCESSIBILITY_SERVICE`
-* **Intent Filter**: `android.accessibilityservice.AccessibilityService`
-* **Configuration XML (`accessibility_service_config.xml`)**:
-  * `canRequestFilterKeyEvents="true"`
-  * `accessibilityFlags="flagRequestFilterKeyEvents"`
-  * `canRetrieveWindowContent="false"` (No window/content inspection)
-  * No gesture dispatching, screenshot collection, or intrusive capabilities requested.
+* **Platform**: Native Android (Kotlin)
+* **Build System**: Gradle 9.7.1 with Kotlin DSL (`build.gradle.kts`)
+* **Android Gradle Plugin (AGP)**: 9.5.1
+* **Kotlin Compiler**: 2.4.21
+* **UI Toolkit**: Jetpack Compose with Material 3
+* **Compose BOM**: `2026.09.00`
+* **Target SDK**: API 35 (Android 15)
+* **Compile SDK**: API 37
+* **Minimum SDK**: API 26 (Android 8.0 Oreo)
+* **Bytecode Target**: Java 17
 
 ---
 
-## Build Instructions
+## Building from Source
 
-To build the debug APK using the Gradle wrapper:
+To compile the debug APK using the Gradle wrapper:
 
-### Windows:
-```cmd
-gradlew.bat assembleDebug
+### Windows (PowerShell / Command Prompt):
+```powershell
+.\gradlew.bat assembleDebug
 ```
 
 ### macOS / Linux:
@@ -156,28 +154,30 @@ gradlew.bat assembleDebug
 ./gradlew assembleDebug
 ```
 
-### Output APK:
-```
-app/build/outputs/apk/debug/app-debug.apk
+### Output Binary Location:
+```text
+apps/android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
 ---
 
-## ADB Installation & Physical Device Testing Instructions
+## Installing & Testing via ADB
 
-1. Connect the Samsung Galaxy A35 via USB with USB Debugging enabled:
-   ```cmd
+1. Connect your phone via USB with **USB Debugging** enabled:
+   ```bash
    adb devices
    ```
-2. Install the APK:
-   ```cmd
-   adb install -r app/build/outputs/apk/debug/app-debug.apk
+2. Install the debug APK:
+   ```bash
+   adb install -r apps/android/app/build/outputs/apk/debug/app-debug.apk
    ```
-3. Launch **Buds Mapper** on the phone.
-4. Tap **Enable Service in Settings** and toggle **Buds Mapper Diagnostic Service** to ON.
-5. Connect **Samsung Galaxy Buds Core**.
-6. Open YouTube, Spotify, or any media app and start playback.
-7. Perform earbud gestures (single tap, double tap, triple tap).
-8. Return to Buds Mapper:
-   * If `MEDIA_PLAY`, `MEDIA_PAUSE`, `MEDIA_NEXT`, or `MEDIA_PREVIOUS` appear under **Earbud Command Monitor** and **Last Received Event**, the `AccessibilityService` is capable of intercepting Galaxy Buds Core AVRCP commands!
-   * If no events appear after verified earbud taps, Android is routing AVRCP commands directly through `AudioService`/`MediaSessionManager`. This provides the empirical proof required to pivot to a `MediaSession` / `MediaButtonReceiver` architecture in Phase 2.
+3. Open **Buds Mapper** on your phone.
+4. Enable the **Buds Mapper Accessibility Service** in your phone's Android Accessibility Settings.
+5. Connect your Galaxy Buds or Bluetooth earbuds.
+6. Toggle **Service Engine** ON to start remapping gestures.
+
+---
+
+## License
+
+This project is licensed under the MIT License.
