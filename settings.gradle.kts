@@ -20,5 +20,6 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "BudsMapper"
-include(":app")
+include(":apps:android:app")
+project(":apps:android:app").projectDir = file("apps/android/app")
 
