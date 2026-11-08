@@ -166,6 +166,7 @@ fun AppRootScaffold(
                             letterSpacing = (-0.3).sp
                         )
                         if (subtitle != null) {
+                            Spacer(modifier = Modifier.height(2.5.dp))
                             Text(
                                 text = subtitle,
                                 color = palette.textSecondary,

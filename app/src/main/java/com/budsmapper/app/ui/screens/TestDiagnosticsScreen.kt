@@ -21,6 +21,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,19 +58,28 @@ fun TestDiagnosticsScreen(
     val lastEvent by eventStore.lastEventFlow.collectAsState()
     val detectionState by eventStore.detectionStateFlow.collectAsState()
     val isTestCaptureForced by eventStore.isTestCaptureForced.collectAsState()
+    val isMasterEnabled by eventStore.isMasterEnabled.collectAsState()
+    var wasMasterOffInitially by remember { mutableStateOf(false) }
     val isAccessibilityActive = BudsAccessibilityService.instance != null
 
     // Automatic shutoff: As soon as the user navigates back OR minimizes the app,
-    // turn OFF test capture mode so normal foreground app routing resumes immediately!
+    // turn OFF test capture mode and restore engine state if it was auto-engaged!
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) {
+                if (wasMasterOffInitially) {
+                    eventStore.setMasterEnabled(false)
+                    wasMasterOffInitially = false
+                }
                 eventStore.setTestCaptureForced(false)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+            if (wasMasterOffInitially) {
+                eventStore.setMasterEnabled(false)
+            }
             eventStore.setTestCaptureForced(false)
         }
     }
@@ -100,10 +112,16 @@ fun TestDiagnosticsScreen(
                         )
                         Spacer(modifier = Modifier.height(5.dp))
                         Text(
-                            text = if (isTestCaptureForced)
-                                "Active · Tap earbuds now to test capture"
-                            else
-                                "Forces capture ON inside Buds Mapper for testing (auto-off on exit)",
+                            text = when {
+                                isTestCaptureForced && wasMasterOffInitially ->
+                                    "Engine auto-engaged for test (will turn off on exit)"
+                                isTestCaptureForced ->
+                                    "Active · Tap earbuds now to test capture"
+                                !isMasterEnabled ->
+                                    "Service Engine is Off · Toggling ON will auto-engage engine for test"
+                                else ->
+                                    "Forces capture ON inside Buds Mapper for testing (auto-off on exit)"
+                            },
                             color = if (isTestCaptureForced) palette.statusAccent else palette.textMuted,
                             fontSize = 12.sp,
                             lineHeight = 16.sp
@@ -113,7 +131,19 @@ fun TestDiagnosticsScreen(
                     NeonSwitch(
                         checked = isTestCaptureForced,
                         onCheckedChange = { forced ->
-                            eventStore.setTestCaptureForced(forced)
+                            if (forced) {
+                                if (!isMasterEnabled) {
+                                    wasMasterOffInitially = true
+                                    eventStore.setMasterEnabled(true)
+                                }
+                                eventStore.setTestCaptureForced(true)
+                            } else {
+                                eventStore.setTestCaptureForced(false)
+                                if (wasMasterOffInitially) {
+                                    eventStore.setMasterEnabled(false)
+                                    wasMasterOffInitially = false
+                                }
+                            }
                         },
                         accentColor = palette.statusAccent
                     )

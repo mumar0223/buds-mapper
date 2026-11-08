@@ -39,6 +39,7 @@ import com.budsmapper.app.ui.components.FlameIcon
 import com.budsmapper.app.ui.components.GameSpaceCard
 import com.budsmapper.app.ui.components.LeafIcon
 import com.budsmapper.app.ui.components.MoonIcon
+import com.budsmapper.app.ui.components.SparkleIcon
 import com.budsmapper.app.ui.components.SunIcon
 import com.budsmapper.app.ui.components.ZapIcon
 import com.budsmapper.app.ui.theme.AccentTheme
@@ -138,13 +139,13 @@ fun SettingsScreen(
 
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     AccentRow(
-                        accent = AccentTheme.FUSION,
-                        label = "Fusion Synergy (Default)",
-                        description = "Ice Blue (Brand) + Neon Mint (Status) + Crimson (Actions)",
-                        swatchColor = Color(0xFF5E81F4),
-                        icon = { ZapIcon(color = Color.White, size = 15.dp) },
-                        isSelected = currentAccent == AccentTheme.FUSION,
-                        onClick = { themeStore.setAccentTheme(AccentTheme.FUSION) }
+                        accent = AccentTheme.VIOLET,
+                        label = "Cyber Violet (Default)",
+                        description = "Signature glowing purple theme",
+                        swatchColor = Color(0xFFA855F7),
+                        icon = { SparkleIcon(color = Color.White, size = 15.dp) },
+                        isSelected = currentAccent == AccentTheme.VIOLET,
+                        onClick = { themeStore.setAccentTheme(AccentTheme.VIOLET) }
                     )
                     AccentRow(
                         accent = AccentTheme.BLUE,
@@ -173,12 +174,48 @@ fun SettingsScreen(
                         isSelected = currentAccent == AccentTheme.MINT,
                         onClick = { themeStore.setAccentTheme(AccentTheme.MINT) }
                     )
+                    AccentRow(
+                        accent = AccentTheme.FUSION,
+                        label = "Fusion Synergy",
+                        description = "Harmonized multi-color palette (Violet + Mint + Crimson)",
+                        swatchColor = Color(0xFFA855F7),
+                        icon = { ZapIcon(color = Color.White, size = 15.dp) },
+                        isSelected = currentAccent == AccentTheme.FUSION,
+                        onClick = { themeStore.setAccentTheme(AccentTheme.FUSION) }
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Card 3: About Buds Mapper
+            // Card 3: Media & Accessibility Overlay Notice
+            GameSpaceCard {
+                Text(
+                    text = "Media Controls & YouTube Overlay",
+                    color = palette.textPrimary,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(5.dp))
+                Text(
+                    text = "Prevent unwanted on-screen playback buttons",
+                    color = palette.textSecondary,
+                    fontSize = 12.sp
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = "If you notice persistent Next, Pause, or Previous overlay buttons stuck on YouTube videos or Shorts, Android has enabled its assistive overlay. You can turn it off anytime inside YouTube: open YouTube → Settings → Accessibility → toggle 'Accessibility player' to OFF.",
+                    color = palette.textMuted,
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Card 4: About Buds Mapper
             GameSpaceCard {
                 Text(
                     text = "Buds Mapper Engine",

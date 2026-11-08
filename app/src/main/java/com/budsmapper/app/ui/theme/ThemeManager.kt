@@ -17,13 +17,14 @@ enum class ThemeMode {
 }
 
 enum class AccentTheme(val id: String, val displayName: String) {
-    FUSION("FUSION", "Fusion Synergy"),
+    VIOLET("VIOLET", "Cyber Violet"),
     BLUE("BLUE", "Cyber Ice Blue"),
     RED("RED", "Hyper Crimson Red"),
-    MINT("MINT", "Neon Cyber Mint");
+    MINT("MINT", "Neon Cyber Mint"),
+    FUSION("FUSION", "Fusion Synergy");
 
     companion object {
-        fun fromId(id: String): AccentTheme = entries.find { it.id == id } ?: FUSION
+        fun fromId(id: String): AccentTheme = entries.find { it.id == id } ?: VIOLET
     }
 }
 
@@ -57,7 +58,7 @@ class ThemeStore private constructor(context: Context) {
     val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
 
     private val _accentTheme = MutableStateFlow(
-        AccentTheme.fromId(prefs.getString(KEY_ACCENT_THEME, AccentTheme.FUSION.id) ?: AccentTheme.FUSION.id)
+        AccentTheme.fromId(prefs.getString(KEY_ACCENT_THEME, AccentTheme.VIOLET.id) ?: AccentTheme.VIOLET.id)
     )
     val accentTheme: StateFlow<AccentTheme> = _accentTheme.asStateFlow()
 
@@ -75,21 +76,21 @@ class ThemeStore private constructor(context: Context) {
         val isDark = mode == ThemeMode.DARK
         return if (isDark) {
             when (accent) {
-                AccentTheme.FUSION -> ThemePalette(
+                AccentTheme.VIOLET -> ThemePalette(
                     isDark = true,
-                    backgroundColor = Color(0xFF0B0E17),
-                    cardBackground = Color(0x99131826), // Frosted glass dark slate
-                    cardBorder = Color(0x383F5278),
-                    cardBorderActive = Color(0xFF5E81F4).copy(alpha = 0.55f),
-                    primaryAccent = Color(0xFF5E81F4), // Cyber Ice Blue
-                    statusAccent = Color(0xFF00E5A3),  // Neon Cyber Mint
-                    actionAccent = Color(0xFFFF3B5C),  // Hyper Crimson
+                    backgroundColor = Color(0xFF0C0A14),
+                    cardBackground = Color(0x99171224), // Frosted glass deep violet
+                    cardBorder = Color(0x3847325D),
+                    cardBorderActive = Color(0xFFA855F7).copy(alpha = 0.65f),
+                    primaryAccent = Color(0xFFA855F7), // Neon Violet from icon
+                    statusAccent = Color(0xFFA855F7),
+                    actionAccent = Color(0xFFC084FC),
                     textPrimary = Color(0xFFFFFFFF),
-                    textSecondary = Color(0xFF94A3B8),
-                    textMuted = Color(0xFF64748B),
-                    auraColor = Color(0xFF5E81F4),
-                    auraAlpha = 0.22f,
-                    buttonOutlineBackground = Color(0xFF5E81F4).copy(alpha = 0.08f)
+                    textSecondary = Color(0xFFA89BB8),
+                    textMuted = Color(0xFF756A88),
+                    auraColor = Color(0xFF8B5CF6), // Glowing violet breathing aura
+                    auraAlpha = 0.24f,
+                    buttonOutlineBackground = Color(0xFFA855F7).copy(alpha = 0.08f)
                 )
                 AccentTheme.BLUE -> ThemePalette(
                     isDark = true,
@@ -139,30 +140,46 @@ class ThemeStore private constructor(context: Context) {
                     auraAlpha = 0.18f,
                     buttonOutlineBackground = Color(0xFF00E5A3).copy(alpha = 0.08f)
                 )
+                AccentTheme.FUSION -> ThemePalette(
+                    isDark = true,
+                    backgroundColor = Color(0xFF0B0E17),
+                    cardBackground = Color(0x99131826), // Frosted glass dark slate
+                    cardBorder = Color(0x383F5278),
+                    cardBorderActive = Color(0xFFA855F7).copy(alpha = 0.55f),
+                    primaryAccent = Color(0xFFA855F7), // Neon Violet (Brand)
+                    statusAccent = Color(0xFF00E5A3),  // Neon Mint (Status)
+                    actionAccent = Color(0xFFFF3B5C),  // Hyper Crimson (Actions)
+                    textPrimary = Color(0xFFFFFFFF),
+                    textSecondary = Color(0xFF94A3B8),
+                    textMuted = Color(0xFF64748B),
+                    auraColor = Color(0xFF8B5CF6),
+                    auraAlpha = 0.22f,
+                    buttonOutlineBackground = Color(0xFFA855F7).copy(alpha = 0.08f)
+                )
             }
         } else {
             // Light Mode (Frosted glass porcelain aesthetic with soft pastel aura)
             when (accent) {
-                AccentTheme.FUSION -> ThemePalette(
+                AccentTheme.VIOLET -> ThemePalette(
                     isDark = false,
-                    backgroundColor = Color(0xFFF7F8FC),
-                    cardBackground = Color(0xDEFFFFFF),
-                    cardBorder = Color(0x55CBD5E1),
-                    cardBorderActive = Color(0xFF4C6EF5).copy(alpha = 0.50f),
-                    primaryAccent = Color(0xFF4C6EF5),
-                    statusAccent = Color(0xFF10B981),
-                    actionAccent = Color(0xFFEF4444),
-                    textPrimary = Color(0xFF0F172A),
-                    textSecondary = Color(0xFF475569),
-                    textMuted = Color(0xFF94A3B8),
-                    auraColor = Color(0xFFC7D2FE),
+                    backgroundColor = Color(0xFFF9F7FD),
+                    cardBackground = Color(0x99FFFFFF), // 60% frosted glass
+                    cardBorder = Color(0x55E9D5FF),
+                    cardBorderActive = Color(0xFF9333EA).copy(alpha = 0.50f),
+                    primaryAccent = Color(0xFF9333EA),
+                    statusAccent = Color(0xFF9333EA),
+                    actionAccent = Color(0xFF7E22CE),
+                    textPrimary = Color(0xFF1E102E),
+                    textSecondary = Color(0xFF5B456E),
+                    textMuted = Color(0xFF8C799E),
+                    auraColor = Color(0xFFDDD6FE),
                     auraAlpha = 0.35f,
-                    buttonOutlineBackground = Color(0xFFF1F5F9)
+                    buttonOutlineBackground = Color(0xFFFAF5FF)
                 )
                 AccentTheme.BLUE -> ThemePalette(
                     isDark = false,
                     backgroundColor = Color(0xFFF7F8FC),
-                    cardBackground = Color(0xDEFFFFFF),
+                    cardBackground = Color(0x99FFFFFF), // 60% frosted glass
                     cardBorder = Color(0x55CBD5E1),
                     cardBorderActive = Color(0xFF3B82F6).copy(alpha = 0.50f),
                     primaryAccent = Color(0xFF3B82F6),
@@ -178,7 +195,7 @@ class ThemeStore private constructor(context: Context) {
                 AccentTheme.RED -> ThemePalette(
                     isDark = false,
                     backgroundColor = Color(0xFFFFF7F8),
-                    cardBackground = Color(0xDEFFFFFF),
+                    cardBackground = Color(0x99FFFFFF), // 60% frosted glass
                     cardBorder = Color(0x55FBCFE8),
                     cardBorderActive = Color(0xFFE11D48).copy(alpha = 0.50f),
                     primaryAccent = Color(0xFFE11D48),
@@ -194,7 +211,7 @@ class ThemeStore private constructor(context: Context) {
                 AccentTheme.MINT -> ThemePalette(
                     isDark = false,
                     backgroundColor = Color(0xFFF5FCF8),
-                    cardBackground = Color(0xDEFFFFFF),
+                    cardBackground = Color(0x99FFFFFF), // 60% frosted glass
                     cardBorder = Color(0x55A7F3D0),
                     cardBorderActive = Color(0xFF059669).copy(alpha = 0.50f),
                     primaryAccent = Color(0xFF059669),
@@ -206,6 +223,22 @@ class ThemeStore private constructor(context: Context) {
                     auraColor = Color(0xFFA7F3D0),
                     auraAlpha = 0.35f,
                     buttonOutlineBackground = Color(0xFFECFDF5)
+                )
+                AccentTheme.FUSION -> ThemePalette(
+                    isDark = false,
+                    backgroundColor = Color(0xFFF7F8FC),
+                    cardBackground = Color(0x99FFFFFF), // 60% frosted glass
+                    cardBorder = Color(0x55CBD5E1),
+                    cardBorderActive = Color(0xFF9333EA).copy(alpha = 0.50f),
+                    primaryAccent = Color(0xFF9333EA), // Violet Brand
+                    statusAccent = Color(0xFF10B981),  // Mint Status
+                    actionAccent = Color(0xFFEF4444),  // Crimson Action
+                    textPrimary = Color(0xFF0F172A),
+                    textSecondary = Color(0xFF475569),
+                    textMuted = Color(0xFF94A3B8),
+                    auraColor = Color(0xFFDDD6FE),
+                    auraAlpha = 0.35f,
+                    buttonOutlineBackground = Color(0xFFF1F5F9)
                 )
             }
         }

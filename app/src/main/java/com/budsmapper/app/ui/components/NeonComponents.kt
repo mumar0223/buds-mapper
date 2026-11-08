@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -35,10 +36,12 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.budsmapper.app.R
 import com.budsmapper.app.ui.theme.AppTheme
 
 // ==========================================
@@ -173,16 +176,36 @@ fun MoonIcon(
     modifier: Modifier = Modifier,
     size: Dp = 18.dp
 ) {
+    Icon(
+        painter = painterResource(id = R.drawable.ic_lucide_moon),
+        contentDescription = "Moon",
+        tint = color,
+        modifier = modifier.size(size)
+    )
+}
+
+/**
+ * Lucide-style Sparkle / Star Icon (Cyber Violet Theme)
+ */
+@Composable
+fun SparkleIcon(
+    color: Color = AppTheme.palette.primaryAccent,
+    modifier: Modifier = Modifier,
+    size: Dp = 15.dp
+) {
     Canvas(modifier = modifier.size(size)) {
-        val strokeWidth = 2.dp.toPx()
+        val strokeWidth = 1.8.dp.toPx()
         val w = this@Canvas.size.width
         val h = this@Canvas.size.height
+        val cx = w * 0.5f
+        val cy = h * 0.5f
 
         val path = Path().apply {
-            moveTo(w * 0.78f, h * 0.15f)
-            quadraticTo(w * 0.20f, h * 0.30f, w * 0.35f, h * 0.85f)
-            quadraticTo(w * 0.80f, h * 0.95f, w * 0.88f, h * 0.60f)
-            quadraticTo(w * 0.50f, h * 0.65f, w * 0.55f, h * 0.25f)
+            moveTo(cx, h * 0.12f)
+            quadraticTo(cx, cy, w * 0.88f, cy)
+            quadraticTo(cx, cy, cx, h * 0.88f)
+            quadraticTo(cx, cy, w * 0.12f, cy)
+            quadraticTo(cx, cy, cx, h * 0.12f)
             close()
         }
         drawPath(
@@ -301,27 +324,12 @@ fun FlameIcon(
     modifier: Modifier = Modifier,
     size: Dp = 18.dp
 ) {
-    Canvas(modifier = modifier.size(size)) {
-        val strokeWidth = 2.dp.toPx()
-        val w = this@Canvas.size.width
-        val h = this@Canvas.size.height
-
-        val path = Path().apply {
-            moveTo(w * 0.50f, h * 0.12f)
-            quadraticTo(w * 0.75f, h * 0.38f, w * 0.68f, h * 0.58f)
-            quadraticTo(w * 0.85f, h * 0.65f, w * 0.78f, h * 0.82f)
-            quadraticTo(w * 0.65f, h * 0.90f, w * 0.50f, h * 0.90f)
-            quadraticTo(w * 0.25f, h * 0.90f, w * 0.22f, h * 0.72f)
-            quadraticTo(w * 0.20f, h * 0.50f, w * 0.45f, h * 0.40f)
-            quadraticTo(w * 0.35f, h * 0.25f, w * 0.50f, h * 0.12f)
-            close()
-        }
-        drawPath(
-            path = path,
-            color = color,
-            style = Stroke(width = strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round)
-        )
-    }
+    Icon(
+        painter = painterResource(id = R.drawable.ic_lucide_flame),
+        contentDescription = "Flame",
+        tint = color,
+        modifier = modifier.size(size)
+    )
 }
 
 /**

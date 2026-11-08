@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import com.budsmapper.app.data.LastEventStore
 import com.budsmapper.app.ui.BudsMapperApp
@@ -17,6 +18,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var themeStore: ThemeStore
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         eventStore = LastEventStore.getInstance(applicationContext)
         themeStore = ThemeStore.getInstance(applicationContext)

@@ -193,7 +193,7 @@ private fun AppProfileItemCard(
                     )
                 } else {
                     Image(
-                        painter = painterResource(id = R.drawable.ic_buds_mapper),
+                        painter = painterResource(id = R.drawable.ic_buds_logo),
                         contentDescription = app.label,
                         modifier = Modifier.size(36.dp)
                     )

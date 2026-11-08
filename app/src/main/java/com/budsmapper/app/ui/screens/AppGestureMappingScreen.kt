@@ -24,13 +24,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -42,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -80,7 +78,6 @@ private val SUPPORTED_GESTURES = listOf(
     CommandGestureInfo(BudsMediaCommand.MEDIA_PAUSE, "Pause command")
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppGestureMappingScreen(
     packageName: String,
@@ -89,6 +86,26 @@ fun AppGestureMappingScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var selectedCommandForEdit by remember { mutableStateOf<CommandGestureInfo?>(null) }
+
+    if (selectedCommandForEdit != null) {
+        val gestureInfo = selectedCommandForEdit!!
+        val currentAction = profileStore.getMapping(packageName, gestureInfo.command)
+        GestureActionSelectionScreen(
+            gestureLabel = gestureInfo.gestureLabel,
+            command = gestureInfo.command,
+            currentAction = currentAction,
+            onActionSelected = { newAction ->
+                profileStore.setMapping(packageName, gestureInfo.command, newAction)
+                selectedCommandForEdit = null
+            },
+            onNavigateBack = {
+                selectedCommandForEdit = null
+            }
+        )
+        return
+    }
+
     BackHandler {
         onNavigateBack()
     }
@@ -103,9 +120,6 @@ fun AppGestureMappingScreen(
         InstalledAppsManager.getCachedApps().find { it.packageName == packageName }?.iconBitmap
     }
     var appIconBitmap by remember(packageName) { mutableStateOf(cachedIcon) }
-    var selectedCommandForEdit by remember { mutableStateOf<CommandGestureInfo?>(null) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(packageName) {
         if (appIconBitmap == null) {
@@ -159,7 +173,7 @@ fun AppGestureMappingScreen(
                             )
                         } else {
                             Icon(
-                                painter = painterResource(id = R.drawable.ic_buds_mapper),
+                                painter = painterResource(id = R.drawable.ic_buds_logo),
                                 contentDescription = null,
                                 tint = palette.primaryAccent,
                                 modifier = Modifier.size(24.dp)
@@ -221,37 +235,6 @@ fun AppGestureMappingScreen(
                     )
                 }
             }
-        }
-    }
-
-    // Modal Bottom Sheet to choose action
-    selectedCommandForEdit?.let { gestureInfo ->
-        val currentAction = profileStore.getMapping(packageName, gestureInfo.command)
-
-        ModalBottomSheet(
-            onDismissRequest = { selectedCommandForEdit = null },
-            sheetState = sheetState,
-            containerColor = if (palette.isDark) Color(0xFF131826) else Color(0xFFFFFFFF),
-            contentColor = palette.textPrimary
-        ) {
-            ActionSelectionSheetContent(
-                gestureLabel = gestureInfo.gestureLabel,
-                command = gestureInfo.command,
-                currentAction = currentAction,
-                onActionSelected = { newAction ->
-                    profileStore.setMapping(packageName, gestureInfo.command, newAction)
-                    coroutineScope.launch {
-                        sheetState.hide()
-                        selectedCommandForEdit = null
-                    }
-                },
-                onCancel = {
-                    coroutineScope.launch {
-                        sheetState.hide()
-                        selectedCommandForEdit = null
-                    }
-                }
-            )
         }
     }
 }
@@ -346,93 +329,94 @@ private fun GestureCard(
 }
 
 @Composable
-private fun ActionSelectionSheetContent(
+private fun GestureActionSelectionScreen(
     gestureLabel: String,
     command: BudsMediaCommand,
     currentAction: MappedAction,
     onActionSelected: (MappedAction) -> Unit,
-    onCancel: () -> Unit
+    onNavigateBack: () -> Unit
 ) {
+    BackHandler {
+        onNavigateBack()
+    }
     val palette = AppTheme.palette
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 14.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Column {
-            Text(
-                text = "Map $gestureLabel",
-                color = palette.textPrimary,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(5.dp))
-            Text(
-                text = "Bluetooth Command: ${command.key} (${command.description})",
-                color = palette.textSecondary,
-                fontSize = 12.sp
-            )
-        }
+    val scrollState = rememberScrollState()
 
-        Spacer(modifier = Modifier.height(4.dp))
-
+    AppRootScaffold(
+        title = "Map $gestureLabel",
+        subtitle = "Bluetooth: ${command.key}",
+        onBackClick = onNavigateBack
+    ) { topPad, bottomPad ->
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .padding(horizontal = 20.dp)
+                .padding(top = topPad, bottom = bottomPad)
         ) {
-            MappedAction.entries.forEach { action ->
-                val isSelected = action == currentAction
-                val borderColor = if (isSelected) palette.primaryAccent else palette.cardBorder
-                val bgColor = if (isSelected) palette.primaryAccent.copy(alpha = 0.10f) else Color.Transparent
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(bgColor)
-                        .border(if (isSelected) 1.5.dp else 1.dp, borderColor, RoundedCornerShape(14.dp))
-                        .clickable { onActionSelected(action) }
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = isSelected,
-                        onClick = { onActionSelected(action) },
-                        colors = RadioButtonDefaults.colors(
-                            selectedColor = palette.primaryAccent,
-                            unselectedColor = palette.textMuted
-                        )
+            GameSpaceCard {
+                Column {
+                    Text(
+                        text = "Select Gesture Action",
+                        color = palette.textPrimary,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = action.displayName,
-                            color = palette.textPrimary,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Spacer(modifier = Modifier.height(3.dp))
-                        Text(
-                            text = action.description,
-                            color = palette.textMuted,
-                            fontSize = 11.sp
-                        )
+                    Spacer(modifier = Modifier.height(5.dp))
+                    Text(
+                        text = "Choose the action triggered when performing $gestureLabel (${command.description}) on your earbuds.",
+                        color = palette.textSecondary,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    MappedAction.entries.forEach { action ->
+                        val isSelected = action == currentAction
+                        val borderColor = if (isSelected) palette.primaryAccent else palette.cardBorder
+                        val bgColor = if (isSelected) palette.primaryAccent.copy(alpha = 0.08f) else Color.Transparent
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(bgColor)
+                                .border(if (isSelected) 1.5.dp else 1.dp, borderColor, RoundedCornerShape(14.dp))
+                                .clickable { onActionSelected(action) }
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = { onActionSelected(action) },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = palette.primaryAccent,
+                                    unselectedColor = palette.textMuted
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = action.displayName,
+                                    color = if (isSelected) palette.primaryAccent else palette.textPrimary,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Spacer(modifier = Modifier.height(3.dp))
+                                Text(
+                                    text = action.description,
+                                    color = palette.textMuted,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        NeonOutlinedButton(
-            text = "Cancel",
-            onClick = onCancel,
-            accentColor = palette.textMuted,
-            trailingText = null
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
